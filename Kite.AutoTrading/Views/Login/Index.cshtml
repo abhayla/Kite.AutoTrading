@@ -1,0 +1,85 @@
+﻿@model Kite.AutoTrading.Common.ViewModels.LoginViewmodel
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_LoginLayout.cshtml";
+}
+
+@using (Html.BeginForm("Index", "Login", FormMethod.Post))
+{
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-4 col-centered table-bordered ">
+                <div class="wrath-content-box"> <span>Sign In</span> </div>
+                <div class="wrath-content-box">
+                    <div class="input-group">
+                        <span class="input-group-addon btn-primary"><span class="glyphicon glyphicon-user"></span></span>
+                        @Html.TextBoxFor(m => m.ZerodhaUserId, new { placeholder = "Zerodha UserId", @class = "form-control" })
+                    </div>
+                    <div class="clearfix"></div>
+                    <br />
+                    <div class="input-group">
+                        <span class="input-group-addon btn-primary"><span class="glyphicon glyphicon-lock"></span> </span>
+                        @Html.TextBoxFor(m => m.ApiKey, new { placeholder = "API Key", @class = "form-control" })
+                    </div>
+                    <div class="clearfix"></div>
+                    <br />
+                    <div class="input-group">
+                        <span class="input-group-addon btn-primary"><span class="glyphicon glyphicon-lock"></span></span>
+                        @Html.TextBoxFor(m => m.ApiSecret, new { placeholder = "API Secret", @class = "form-control" })
+                    </div>
+                    <div class="clearfix"></div>
+                    <br />
+                    <div class="input-group">
+                        <span class="input-group-addon btn-primary"><span class="glyphicon glyphicon-lock"></span> </span>
+                        @Html.TextBoxFor(m => m.RequestToken, new { placeholder = "Request Token", @class = "form-control" })
+                    </div>
+                    <div class="clearfix"></div>
+                    <br />
+                    
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="button" class="btn-success" value="Get Request Token" onclick="window.open('https://kite.trade/connect/login?api_key=17fzkglzv7v07xx1')" />
+                    </div>
+                    <div class="col-md-6">
+                        <input type="submit" class="btn-success" value="Login" />
+                    </div>
+                </div>
+                <div class="clearfix"></div>
+            </div>
+        </div>
+    </div>
+
+}
+
+<style type="text/css">
+    body {
+        background-color: #000;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+    }
+
+    span {
+        color: #fff;
+        font-family: 'Raleway', sans-serif;
+        font-size: 18px;
+    }
+
+    p {
+        color: #fff;
+        font-family: 'Raleway', sans-serif;
+        font-size: 12px;
+    }
+
+    .col-centered {
+        float: none;
+        margin: 0 auto;
+        margin-top: 250px;
+    }
+
+    .wrath-content-box {
+        padding: 15px;
+    }
+</style>

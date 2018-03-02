@@ -1,0 +1,411 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+  <!-- EF Runtime content -->
+  <edmx:Runtime>
+    <!-- SSDL content -->
+    <edmx:StorageModels>
+    <Schema Namespace="KiteAutotradingModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <EntityType Name="BrokerOrder">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="JobId" Type="int" />
+          <Property Name="TradingSymbol" Type="varchar" MaxLength="80" />
+          <Property Name="TransactionType" Type="varchar" MaxLength="50" />
+          <Property Name="Quantity" Type="int" />
+          <Property Name="Price" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="Product" Type="varchar" MaxLength="50" />
+          <Property Name="OrderType" Type="varchar" MaxLength="50" />
+          <Property Name="Validity" Type="varchar" MaxLength="50" />
+          <Property Name="DisclosedQuantity" Type="int" />
+          <Property Name="TriggerPrice" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="SquareOffValue" Type="numeric" Precision="18" Scale="0" />
+          <Property Name="StoplossValue" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="TrailingStoploss" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="Variety" Type="varchar" MaxLength="50" />
+          <Property Name="Tag" Type="varchar" MaxLength="50" />
+          <Property Name="OrderStatus" Type="nchar" MaxLength="10" />
+          <Property Name="StatusMessage" Type="nvarchar" MaxLength="500" />
+          <Property Name="BrokerOrderId" Type="varchar" MaxLength="50" />
+          <Property Name="CreatedDate" Type="datetime" />
+          <Property Name="ModifiedDate" Type="datetime" />
+        </EntityType>
+        <EntityType Name="BrokerPosition">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="numeric" Precision="18" Scale="0" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Exchange" Type="varchar" MaxLength="20" />
+          <Property Name="TradingSymbol" Type="nvarchar" MaxLength="80" />
+          <Property Name="Realised" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="PNL" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="AveragePrice" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="Unrealised" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="DayBuyQuantity" Type="int" />
+          <Property Name="DaySellQuantity" Type="int" />
+          <Property Name="DayBuyPrice" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="DaySellPrice" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="DayBuyValue" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="DaySellValue" Type="numeric" Precision="18" Scale="3" />
+          <Property Name="CreatedDate" Type="datetime" />
+        </EntityType>
+        <EntityType Name="Job">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Status" Type="varchar" MaxLength="20" />
+          <Property Name="HangfireId" Type="varchar" MaxLength="50" />
+          <Property Name="StrategyId" Type="int" Nullable="false" />
+          <Property Name="UserSessionId" Type="int" />
+          <Property Name="CreatedDate" Type="datetime" Nullable="false" />
+          <Property Name="ModifiedDate" Type="datetime" />
+        </EntityType>
+        <EntityType Name="Strategy">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="MaxProfit" Type="numeric" Precision="18" Scale="3" Nullable="false" />
+          <Property Name="MaxLoss" Type="numeric" Precision="18" Scale="0" Nullable="false" />
+          <Property Name="WatchlistId" Type="int" />
+        </EntityType>
+        <EntityType Name="Symbol">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Name" Type="varchar" MaxLength="200" />
+          <Property Name="TradingSymbol" Type="varchar" MaxLength="80" />
+          <Property Name="InstrumentToken" Type="varchar" MaxLength="50" />
+          <Property Name="Exchange" Type="varchar" MaxLength="50" />
+          <Property Name="ExchangeToken" Type="varchar" MaxLength="50" />
+          <Property Name="TickSize" Type="numeric" Precision="6" Scale="3" />
+          <Property Name="Expiry" Type="datetime" />
+          <Property Name="InstrumentType" Type="nvarchar" MaxLength="50" />
+          <Property Name="Segment" Type="nvarchar" MaxLength="50" />
+          <Property Name="Strike" Type="numeric" Precision="18" Scale="0" />
+          <Property Name="LotSize" Type="bigint" />
+          <Property Name="CreatedDate" Type="datetime" />
+          <Property Name="ModifiedDate" Type="datetime" />
+        </EntityType>
+        <EntityType Name="UserSession">
+          <Key>
+            <PropertyRef Name="UserSessionId" />
+          </Key>
+          <Property Name="UserSessionId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="UserId" Type="varchar" MaxLength="50" />
+          <Property Name="ApiKey" Type="varchar" MaxLength="150" />
+          <Property Name="AppSecret" Type="varchar" MaxLength="150" />
+          <Property Name="AccessToken" Type="varchar" MaxLength="150" />
+          <Property Name="PublicToken" Type="varchar" MaxLength="150" />
+          <Property Name="CreatedDate" Type="datetime" />
+        </EntityType>
+        <EntityType Name="Watchlist">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Name" Type="varchar" MaxLength="100" />
+          <Property Name="CreatedDate" Type="datetime" />
+          <Property Name="ModifiedDate" Type="datetime" />
+        </EntityType>
+        <EntityType Name="WatchlistSymbolMapping">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="WatchlistId" Type="int" />
+          <Property Name="SymbolId" Type="int" />
+        </EntityType>
+        <EntityContainer Name="KiteAutotradingModelStoreContainer">
+          <EntitySet Name="BrokerOrder" EntityType="Self.BrokerOrder" Schema="Trading" store:Type="Tables" />
+          <EntitySet Name="BrokerPosition" EntityType="Self.BrokerPosition" Schema="Trading" store:Type="Tables" />
+          <EntitySet Name="Job" EntityType="Self.Job" Schema="Trading" store:Type="Tables" />
+          <EntitySet Name="Strategy" EntityType="Self.Strategy" Schema="Trading" store:Type="Tables" />
+          <EntitySet Name="Symbol" EntityType="Self.Symbol" Schema="Trading" store:Type="Tables" />
+          <EntitySet Name="UserSession" EntityType="Self.UserSession" Schema="Trading" store:Type="Tables" />
+          <EntitySet Name="Watchlist" EntityType="Self.Watchlist" Schema="Trading" store:Type="Tables" />
+          <EntitySet Name="WatchlistSymbolMapping" EntityType="Self.WatchlistSymbolMapping" Schema="Trading" store:Type="Tables" />
+        </EntityContainer>
+      </Schema></edmx:StorageModels>
+    <!-- CSDL content -->
+    <edmx:ConceptualModels>
+      <Schema Namespace="KiteAutotradingModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+        <EntityContainer Name="KiteAutotradingEntities" annotation:LazyLoadingEnabled="true">
+          <EntitySet Name="Jobs" EntityType="KiteAutotradingModel.Job" />
+          <EntitySet Name="Strategies" EntityType="KiteAutotradingModel.Strategy" />
+          <EntitySet Name="UserSessions" EntityType="KiteAutotradingModel.UserSession" />
+          <EntitySet Name="Watchlists" EntityType="KiteAutotradingModel.Watchlist" />
+          <EntitySet Name="Symbols" EntityType="KiteAutotradingModel.Symbol" />
+          <EntitySet Name="WatchlistSymbolMappings" EntityType="KiteAutotradingModel.WatchlistSymbolMapping" />
+          <EntitySet Name="BrokerOrders" EntityType="KiteAutotradingModel.BrokerOrder" />
+          <EntitySet Name="BrokerPositions" EntityType="KiteAutotradingModel.BrokerPosition" />
+        </EntityContainer>
+        <EntityType Name="Job">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Status" Type="String" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="HangfireId" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="StrategyId" Type="Int32" Nullable="false" />
+          <Property Name="UserSessionId" Type="Int32" />
+          <Property Name="CreatedDate" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="ModifiedDate" Type="DateTime" Precision="3" />
+        </EntityType>
+        <EntityType Name="Strategy">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="MaxProfit" Type="Decimal" Nullable="false" Precision="18" Scale="3" />
+          <Property Name="MaxLoss" Type="Decimal" Nullable="false" Precision="18" Scale="0" />
+          <Property Name="WatchlistId" Type="Int32" />
+        </EntityType>
+        <EntityType Name="UserSession">
+          <Key>
+            <PropertyRef Name="UserSessionId" />
+          </Key>
+          <Property Name="UserSessionId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="UserId" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="ApiKey" Type="String" MaxLength="150" FixedLength="false" Unicode="false" />
+          <Property Name="AppSecret" Type="String" MaxLength="150" FixedLength="false" Unicode="false" />
+          <Property Name="AccessToken" Type="String" MaxLength="150" FixedLength="false" Unicode="false" />
+          <Property Name="PublicToken" Type="String" MaxLength="150" FixedLength="false" Unicode="false" />
+          <Property Name="CreatedDate" Type="DateTime" Precision="3" />
+        </EntityType>
+        <EntityType Name="Watchlist">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Name" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="CreatedDate" Type="DateTime" Precision="3" />
+          <Property Name="ModifiedDate" Type="DateTime" Precision="3" />
+        </EntityType>
+        <EntityType Name="Symbol">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Name" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="TradingSymbol" Type="String" MaxLength="80" FixedLength="false" Unicode="false" />
+          <Property Name="InstrumentToken" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Exchange" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="ExchangeToken" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="TickSize" Type="Decimal" Precision="6" Scale="3" />
+          <Property Name="Expiry" Type="DateTime" Precision="3" />
+          <Property Name="InstrumentType" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="Segment" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="Strike" Type="Decimal" Precision="18" Scale="0" />
+          <Property Name="LotSize" Type="Int64" />
+          <Property Name="CreatedDate" Type="DateTime" Precision="3" />
+          <Property Name="ModifiedDate" Type="DateTime" Precision="3" />
+        </EntityType>
+        <EntityType Name="WatchlistSymbolMapping">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="WatchlistId" Type="Int32" />
+          <Property Name="SymbolId" Type="Int32" />
+        </EntityType>
+        <EntityType Name="BrokerOrder">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="JobId" Type="Int32" />
+          <Property Name="TradingSymbol" Type="String" MaxLength="80" FixedLength="false" Unicode="false" />
+          <Property Name="TransactionType" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Quantity" Type="Int32" />
+          <Property Name="Price" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="Product" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="OrderType" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Validity" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="DisclosedQuantity" Type="Int32" />
+          <Property Name="TriggerPrice" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="SquareOffValue" Type="Decimal" Precision="18" Scale="0" />
+          <Property Name="StoplossValue" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="TrailingStoploss" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="Variety" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Tag" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="OrderStatus" Type="String" MaxLength="10" FixedLength="true" Unicode="true" />
+          <Property Name="StatusMessage" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="BrokerOrderId" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="CreatedDate" Type="DateTime" Precision="3" />
+          <Property Name="ModifiedDate" Type="DateTime" Precision="3" />
+        </EntityType>
+        <EntityType Name="BrokerPosition">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Decimal" Nullable="false" Precision="18" Scale="0" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Exchange" Type="String" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="TradingSymbol" Type="String" MaxLength="80" FixedLength="false" Unicode="true" />
+          <Property Name="Realised" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="PNL" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="AveragePrice" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="Unrealised" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="DayBuyQuantity" Type="Int32" />
+          <Property Name="DaySellQuantity" Type="Int32" />
+          <Property Name="DayBuyPrice" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="DaySellPrice" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="DayBuyValue" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="DaySellValue" Type="Decimal" Precision="18" Scale="3" />
+          <Property Name="CreatedDate" Type="DateTime" Precision="3" />
+        </EntityType>
+      </Schema>
+    </edmx:ConceptualModels>
+    <!-- C-S mapping content -->
+    <edmx:Mappings>
+      <Mapping Space="C-S" xmlns="http://schemas.microsoft.com/ado/2009/11/mapping/cs">
+        <EntityContainerMapping StorageEntityContainer="KiteAutotradingModelStoreContainer" CdmEntityContainer="KiteAutotradingEntities">
+          <EntitySetMapping Name="Jobs">
+            <EntityTypeMapping TypeName="KiteAutotradingModel.Job">
+              <MappingFragment StoreEntitySet="Job">
+                <ScalarProperty Name="ModifiedDate" ColumnName="ModifiedDate" />
+                <ScalarProperty Name="CreatedDate" ColumnName="CreatedDate" />
+                <ScalarProperty Name="UserSessionId" ColumnName="UserSessionId" />
+                <ScalarProperty Name="StrategyId" ColumnName="StrategyId" />
+                <ScalarProperty Name="HangfireId" ColumnName="HangfireId" />
+                <ScalarProperty Name="Status" ColumnName="Status" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Strategies">
+            <EntityTypeMapping TypeName="KiteAutotradingModel.Strategy">
+              <MappingFragment StoreEntitySet="Strategy">
+                <ScalarProperty Name="WatchlistId" ColumnName="WatchlistId" />
+                <ScalarProperty Name="MaxLoss" ColumnName="MaxLoss" />
+                <ScalarProperty Name="MaxProfit" ColumnName="MaxProfit" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="UserSessions">
+            <EntityTypeMapping TypeName="KiteAutotradingModel.UserSession">
+              <MappingFragment StoreEntitySet="UserSession">
+                <ScalarProperty Name="CreatedDate" ColumnName="CreatedDate" />
+                <ScalarProperty Name="PublicToken" ColumnName="PublicToken" />
+                <ScalarProperty Name="AccessToken" ColumnName="AccessToken" />
+                <ScalarProperty Name="AppSecret" ColumnName="AppSecret" />
+                <ScalarProperty Name="ApiKey" ColumnName="ApiKey" />
+                <ScalarProperty Name="UserId" ColumnName="UserId" />
+                <ScalarProperty Name="UserSessionId" ColumnName="UserSessionId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Watchlists">
+            <EntityTypeMapping TypeName="KiteAutotradingModel.Watchlist">
+              <MappingFragment StoreEntitySet="Watchlist">
+                <ScalarProperty Name="ModifiedDate" ColumnName="ModifiedDate" />
+                <ScalarProperty Name="CreatedDate" ColumnName="CreatedDate" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Symbols">
+            <EntityTypeMapping TypeName="KiteAutotradingModel.Symbol">
+              <MappingFragment StoreEntitySet="Symbol">
+                <ScalarProperty Name="ModifiedDate" ColumnName="ModifiedDate" />
+                <ScalarProperty Name="CreatedDate" ColumnName="CreatedDate" />
+                <ScalarProperty Name="LotSize" ColumnName="LotSize" />
+                <ScalarProperty Name="Strike" ColumnName="Strike" />
+                <ScalarProperty Name="Segment" ColumnName="Segment" />
+                <ScalarProperty Name="InstrumentType" ColumnName="InstrumentType" />
+                <ScalarProperty Name="Expiry" ColumnName="Expiry" />
+                <ScalarProperty Name="TickSize" ColumnName="TickSize" />
+                <ScalarProperty Name="ExchangeToken" ColumnName="ExchangeToken" />
+                <ScalarProperty Name="Exchange" ColumnName="Exchange" />
+                <ScalarProperty Name="InstrumentToken" ColumnName="InstrumentToken" />
+                <ScalarProperty Name="TradingSymbol" ColumnName="TradingSymbol" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="WatchlistSymbolMappings">
+            <EntityTypeMapping TypeName="KiteAutotradingModel.WatchlistSymbolMapping">
+              <MappingFragment StoreEntitySet="WatchlistSymbolMapping">
+                <ScalarProperty Name="SymbolId" ColumnName="SymbolId" />
+                <ScalarProperty Name="WatchlistId" ColumnName="WatchlistId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="BrokerOrders">
+            <EntityTypeMapping TypeName="KiteAutotradingModel.BrokerOrder">
+              <MappingFragment StoreEntitySet="BrokerOrder">
+                <ScalarProperty Name="ModifiedDate" ColumnName="ModifiedDate" />
+                <ScalarProperty Name="CreatedDate" ColumnName="CreatedDate" />
+                <ScalarProperty Name="BrokerOrderId" ColumnName="BrokerOrderId" />
+                <ScalarProperty Name="StatusMessage" ColumnName="StatusMessage" />
+                <ScalarProperty Name="OrderStatus" ColumnName="OrderStatus" />
+                <ScalarProperty Name="Tag" ColumnName="Tag" />
+                <ScalarProperty Name="Variety" ColumnName="Variety" />
+                <ScalarProperty Name="TrailingStoploss" ColumnName="TrailingStoploss" />
+                <ScalarProperty Name="StoplossValue" ColumnName="StoplossValue" />
+                <ScalarProperty Name="SquareOffValue" ColumnName="SquareOffValue" />
+                <ScalarProperty Name="TriggerPrice" ColumnName="TriggerPrice" />
+                <ScalarProperty Name="DisclosedQuantity" ColumnName="DisclosedQuantity" />
+                <ScalarProperty Name="Validity" ColumnName="Validity" />
+                <ScalarProperty Name="OrderType" ColumnName="OrderType" />
+                <ScalarProperty Name="Product" ColumnName="Product" />
+                <ScalarProperty Name="Price" ColumnName="Price" />
+                <ScalarProperty Name="Quantity" ColumnName="Quantity" />
+                <ScalarProperty Name="TransactionType" ColumnName="TransactionType" />
+                <ScalarProperty Name="TradingSymbol" ColumnName="TradingSymbol" />
+                <ScalarProperty Name="JobId" ColumnName="JobId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="BrokerPositions">
+            <EntityTypeMapping TypeName="KiteAutotradingModel.BrokerPosition">
+              <MappingFragment StoreEntitySet="BrokerPosition">
+                <ScalarProperty Name="CreatedDate" ColumnName="CreatedDate" />
+                <ScalarProperty Name="DaySellValue" ColumnName="DaySellValue" />
+                <ScalarProperty Name="DayBuyValue" ColumnName="DayBuyValue" />
+                <ScalarProperty Name="DaySellPrice" ColumnName="DaySellPrice" />
+                <ScalarProperty Name="DayBuyPrice" ColumnName="DayBuyPrice" />
+                <ScalarProperty Name="DaySellQuantity" ColumnName="DaySellQuantity" />
+                <ScalarProperty Name="DayBuyQuantity" ColumnName="DayBuyQuantity" />
+                <ScalarProperty Name="Unrealised" ColumnName="Unrealised" />
+                <ScalarProperty Name="AveragePrice" ColumnName="AveragePrice" />
+                <ScalarProperty Name="PNL" ColumnName="PNL" />
+                <ScalarProperty Name="Realised" ColumnName="Realised" />
+                <ScalarProperty Name="TradingSymbol" ColumnName="TradingSymbol" />
+                <ScalarProperty Name="Exchange" ColumnName="Exchange" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+        </EntityContainerMapping>
+      </Mapping>
+    </edmx:Mappings>
+  </edmx:Runtime>
+  <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <Connection>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="MetadataArtifactProcessing" Value="EmbedInOutputAssembly" />
+      </DesignerInfoPropertySet>
+    </Connection>
+    <Options>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="ValidateOnBuild" Value="true" />
+        <DesignerProperty Name="EnablePluralization" Value="true" />
+        <DesignerProperty Name="IncludeForeignKeysInModel" Value="true" />
+        <DesignerProperty Name="UseLegacyProvider" Value="false" />
+        <DesignerProperty Name="CodeGenerationStrategy" Value="None" />
+      </DesignerInfoPropertySet>
+    </Options>
+    <!-- Diagram content (shape and connector positions) -->
+    <Diagrams></Diagrams>
+  </Designer>
+</edmx:Edmx>

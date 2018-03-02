@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+ <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <!-- Diagram content (shape and connector positions) -->
+    <edmx:Diagrams>
+      <Diagram DiagramId="f281e03b2ccf44c8bbc53d3bac11c19f" Name="Diagram1" ZoomLevel="52">
+        <EntityTypeShape EntityType="KiteAutotradingModel.Job" Width="1.5" PointX="2.75" PointY="0.75" />
+        <EntityTypeShape EntityType="KiteAutotradingModel.Strategy" Width="1.5" PointX="4.75" PointY="0.75" />
+        <EntityTypeShape EntityType="KiteAutotradingModel.UserSession" Width="1.5" PointX="4.75" PointY="3.75" />
+        <EntityTypeShape EntityType="KiteAutotradingModel.Watchlist" Width="1.5" PointX="6.75" PointY="0.75" />
+        <EntityTypeShape EntityType="KiteAutotradingModel.Symbol" Width="1.5" PointX="2.75" PointY="7.75" />
+        <EntityTypeShape EntityType="KiteAutotradingModel.WatchlistSymbolMapping" Width="1.5" PointX="7.375" PointY="3.75" />
+        <EntityTypeShape EntityType="KiteAutotradingModel.BrokerOrder" Width="1.5" PointX="5.375" PointY="7.75" />
+        <EntityTypeShape EntityType="KiteAutotradingModel.BrokerPosition" Width="1.5" PointX="7.375" PointY="6.75" />
+      </Diagram>
+    </edmx:Diagrams>
+  </edmx:Designer>
+</edmx:Edmx>
