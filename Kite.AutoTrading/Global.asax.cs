@@ -1,4 +1,5 @@
-﻿using Kite.AutoTrading.App_Start;
+﻿using Hangfire;
+using Kite.AutoTrading.App_Start;
 using Kite.AutoTrading.Common.Configurations;
 using Kite.AutoTrading.Filters;
 using System.Web;
@@ -20,6 +21,9 @@ namespace Kite.AutoTrading
             GlobalFilters.Filters.Add(new GlobalExceptionFilter());
 
             GlobalConfigurations.LogPath = HttpContext.Current.Server.MapPath("~/Logs/");
+
+            GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute { Attempts = 0 });
+
         }
     }
 }
