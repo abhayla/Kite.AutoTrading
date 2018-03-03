@@ -41,6 +41,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                 //Write code for following tasks
                 //Kill Jobs
                 //Shutdown VM
+                //Delete Cached Data
             }
         }
         private bool IsMarketClosed()
