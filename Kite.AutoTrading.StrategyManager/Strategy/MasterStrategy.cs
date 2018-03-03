@@ -1,4 +1,5 @@
 ﻿using Kite.AutoTrading.Business.Brokers;
+using Kite.AutoTrading.Common.Configurations;
 using Kite.AutoTrading.Common.Models;
 using Kite.AutoTrading.Data.DataServices;
 using KiteConnect;
@@ -41,14 +42,13 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                 //Write code for following tasks
                 //Kill Jobs
                 //Shutdown VM
-                //Delete Cached Data
+                //Delete Cached Data 1
             }
         }
         private bool IsMarketClosed()
         {
             //check indian standard time
-            TimeZoneInfo INDIAN_ZONE = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
-            var indianTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, INDIAN_ZONE).TimeOfDay;
+            var indianTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, GlobalConfigurations.IndianTimeZone).TimeOfDay;
             var start = new TimeSpan(10, 0, 0); //10 o'clock
             var end = new TimeSpan(15, 30, 0); //12 o'clock
             if ((indianTime > start) && (indianTime < end))
