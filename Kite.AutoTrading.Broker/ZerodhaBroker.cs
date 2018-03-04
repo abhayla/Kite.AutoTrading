@@ -126,13 +126,8 @@ namespace Kite.AutoTrading.Business.Brokers
         }
 
         private string GetFilePath(Symbol symbol)
-        {
-            string filepath = GlobalConfigurations.LogPath + "CachedData\\";
-
-            if (!Directory.Exists(filepath))
-                Directory.CreateDirectory(filepath);
-
-            return filepath + symbol.TradingSymbol + ".bin";
+        {           
+            return GlobalConfigurations.CachedDataPath + symbol.TradingSymbol + ".bin";
         }
     }
 }

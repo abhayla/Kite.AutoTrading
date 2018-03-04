@@ -6,6 +6,7 @@ using KiteConnect;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -39,10 +40,13 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                 if (positions.Day != null)
                     await _brokerPositionService.SyncPositions(positions.Day);
 
-                //Write code for following tasks
+                //Delete Cached Data
+                DeleteCachedHistoricalData();
+
+                //Write code for following tasks ->
                 //Kill Jobs
                 //Shutdown VM
-                //Delete Cached Data 1
+
             }
         }
         private bool IsMarketClosed()
@@ -55,6 +59,16 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                 return false;
             else
                 return true;
+        }
+        private bool DeleteCachedHistoricalData()
+        {
+            var cachedDataPath = GlobalConfigurations.CachedDataPath;
+            if (Directory.Exists(cachedDataPath))
+            {
+                Directory.Delete(cachedDataPath);
+                return true;
+            }
+            return false;
         }
     }
 }

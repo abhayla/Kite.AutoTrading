@@ -28,6 +28,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
         private readonly int _MaxActivePositions = 10;
         private readonly int _HistoricalDataInDays = -45;
         private readonly string _HistoricalDataTimeframe = Constants.INTERVAL_5MINUTE;
+        private readonly int _HistoricalDataTimeframeInInt = 5;
         private readonly decimal _RiskPercentage = 0.003m;
         private readonly decimal _RewardPercentage = 0.008m;
         private readonly int _MacdCrossBacktestStart = 2;
@@ -50,59 +51,6 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             _strategyService = new StrategyService();
         }
 
-        //public async Task Start(int jobId,bool isDevelopment = false)
-        //{
-        //    StringBuilder sb = new StringBuilder();
-        //    Stopwatch sw = new Stopwatch();
-        //    sw.Start();
-        //    ApplicationLogger.LogJob(jobId, " job Started " + DateTime.Now.ToString());
-        //    //check indian standard time
-        //    TimeZoneInfo INDIAN_ZONE = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
-        //    var indianTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, INDIAN_ZONE).TimeOfDay;
-        //    var start = new TimeSpan(9, 30, 0); //10 o'clock
-        //    var end = new TimeSpan(15, 10, 0); //12 o'clock
-        //    if (((indianTime > start) && (indianTime < end)) || isDevelopment)
-        //    {
-        //        _jobId = jobId;
-        //        var job = await _jobService.GetJob(jobId);
-        //        var strategy = await _strategyService.Get(job.StrategyId);
-        //        var symbols = await _watchlistService.GetSymbols(strategy.WatchlistId);
-
-        //        var userSession = await _userSessionService.GetCurrentSession();
-        //        if (userSession != null)
-        //        {
-        //            _zeropdhaService = new ZerodhaBroker(AutoMapper.Mapper.Map<UserSessionModel>(userSession));
-        //            var positions = _zeropdhaService._kite.GetPositions();
-        //            var orders = _zeropdhaService._kite.GetOrders();
-
-        //            Parallel.ForEach(symbols, symbol =>
-        //            {
-        //                var candles = _zeropdhaService.GetData(symbol, _HistoricalDataInDays, _HistoricalDataTimeframe);
-        //                if (candles != null && candles.Count() > 0)
-        //                {
-        //                    var position = positions.Day.Where(x => x.TradingSymbol == symbol.TradingSymbol).FirstOrDefault();
-        //                    var order = orders.Where(x => x.Tradingsymbol == symbol.TradingSymbol && x.Status == "TRIGGER PENDING").OrderByDescending(x => x.OrderTimestamp).FirstOrDefault();
-        //                    var parentOrder = orders.Where(x => x.OrderId == order.ParentOrderId).FirstOrDefault();
-        //                    if (position.Quantity != 0)
-        //                        SquareOffOpenPosition(symbol, candles, position, order, parentOrder);
-        //                    else if (positions.Day != null && positions.Day.Where(x => x.Quantity != 0).Count() < _MaxActivePositions)
-        //                    {
-        //                        if (!BullishScan(symbol, candles))
-        //                            BearishScan(symbol, candles);
-        //                    }
-        //                }
-        //            });
-
-        //            //Update Status after every round of scanning
-        //            job.Status = JobStatus.Running.ToString();
-        //            job.ModifiedDate = DateTime.Now;
-        //            await _jobService.Update(job);
-        //        }
-        //    }
-        //    sw.Stop();
-        //    ApplicationLogger.LogJob(jobId, " job Completed in " + sw.Elapsed.TotalMinutes);
-        //}
-
         public async Task Start(int jobId, bool isDevelopment = false)
         {
             StringBuilder sb = new StringBuilder();
@@ -111,6 +59,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             ApplicationLogger.LogJob(jobId, " job Started " + DateTime.Now.ToString());
             //check indian standard time
             var indianTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, GlobalConfigurations.IndianTimeZone);
+
             var start = new TimeSpan(9, 30, 0); //10 o'clock
             var end = new TimeSpan(15, 10, 0); //12 o'clock
             if (((indianTime.TimeOfDay > start) && (indianTime.TimeOfDay < end)) || isDevelopment)
@@ -129,7 +78,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
 
                     await symbols.ParallelForEachAsync(async symbol =>
                     {
-                        var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays), indianTime);
+                        var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays), new DateTime(indianTime.Year, indianTime.Month, indianTime.Day, indianTime.Hour, (indianTime.Minute <= 0 ? indianTime.Minute : Convert.ToInt32(indianTime.Minute / _HistoricalDataTimeframeInInt) * _HistoricalDataTimeframeInInt), 01));
                         if (candles != null && candles.Count() > 0)
                         {
                             var position = positions.Day.Where(x => x.TradingSymbol == symbol.TradingSymbol).FirstOrDefault();
@@ -168,7 +117,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             var currentCandle = new IndexedCandle(candles, candles.Count() - 1);
             var closes = new List<decimal> { 23, 23 };
             var smaTs = closes.MacdHist(12, 26, 9);
-
+            ApplicationLogger.LogJob(_jobId, DateTime.Now.ToString() + " BullishScan (" + symbol.TradingSymbol + ") ");
             if (fiveEma.Tick.Value > twentyEma.Tick.Value && fiveEma.Tick.Value > twentySma.Tick.Value && currentCandle.IsMacdOscBullish(12, 26, 9))
             {
                 //Verify MACD from last 2 to 4 candles
@@ -205,6 +154,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             var twentyEma = candles.Ema(20)[candles.Count() - 1];
             var twentySma = candles.Sma(20)[candles.Count() - 1];
             var currentCandle = new IndexedCandle(candles, candles.Count() - 1);
+            ApplicationLogger.LogJob(_jobId, DateTime.Now.ToString() + " BearishScan (" + symbol.TradingSymbol + ") ");
 
             if (fiveEma.Tick.Value < twentyEma.Tick.Value && fiveEma.Tick.Value < twentySma.Tick.Value && currentCandle.IsMacdOscBearish(12, 26, 9))
             {
@@ -283,6 +233,5 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             }
             return true;
         }
-
     }
 }
