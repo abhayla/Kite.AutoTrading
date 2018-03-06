@@ -30,7 +30,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
         private readonly string _HistoricalDataTimeframe = Constants.INTERVAL_5MINUTE;
         private readonly int _HistoricalDataTimeframeInInt = 5;
         private readonly decimal _RiskPercentage = 0.003m;
-        private readonly decimal _RewardPercentage = 0.008m;
+        private readonly decimal _RewardPercentage = 0.007m;
         private readonly int _MacdCrossBacktestStart = 2;
         private readonly int _MacdCrossBacktestEnd = 4;
 
@@ -58,7 +58,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             sw.Start();
             ApplicationLogger.LogJob(jobId, " job Started " + DateTime.Now.ToString());
             //check indian standard time
-            var indianTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, GlobalConfigurations.IndianTimeZone);
+            var indianTime = GlobalConfigurations.IndianTime;
 
             var start = new TimeSpan(9, 30, 0); //10 o'clock
             var end = new TimeSpan(15, 10, 0); //12 o'clock
@@ -124,6 +124,8 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                 for (int i = _MacdCrossBacktestStart; i <= _MacdCrossBacktestEnd; i++)
                 {
                     var indexedCandleLastN = new IndexedCandle(candles, candles.Count() - i);
+                    
+
                     if (indexedCandleLastN.IsMacdBullishCross(12, 26, 9) && IsHistogramTrending(candles, i))
                     {
                         _zeropdhaService.PlaceOrder(new BrokerOrderModel()
@@ -192,9 +194,15 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             var rewardAmount = parentOrder.Price * _RewardPercentage;
             if (position.Quantity < 0)
             {
+                ApplicationLogger.LogJob(_jobId, " SquareOffOpenPosition (SELL) -> indexedCandle.Close -> (" + indexedCandle.Close + ")" +
+                    " parentOrder.Price - (rewardAmount) -> " + (parentOrder.Price - (rewardAmount)) +
+                    " indexedCandle.IsMacdOscBearish(12,26,9) -> " + indexedCandle.IsMacdOscBearish(12,26,9));
                 //close sell position
                 if (indexedCandle.Close <= parentOrder.Price - (rewardAmount))
                 {
+                    ApplicationLogger.LogJob(_jobId, " SquareOffOpenPosition  (BUY) -> indexedCandle.Close -> (" + indexedCandle.Close + ")" +
+                    " parentOrder.Price - (rewardAmount) -> " + (parentOrder.Price - (rewardAmount)) +
+                    " indexedCandle.IsMacdOscBullish(12,26,9) -> " + indexedCandle.IsMacdOscBullish(12, 26, 9));
                     _zeropdhaService._kite.CancelOrder(order.OrderId, Constants.VARIETY_CO, order.ParentOrderId);
                     return true;
                 }

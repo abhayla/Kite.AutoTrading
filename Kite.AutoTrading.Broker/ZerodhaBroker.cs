@@ -60,6 +60,7 @@ namespace Kite.AutoTrading.Business.Brokers
                 {
                     isRetry = true;
                     Thread.Sleep(100);
+                    ApplicationLogger.LogException(JsonConvert.SerializeObject(ex));
                 }
             }
             return null;

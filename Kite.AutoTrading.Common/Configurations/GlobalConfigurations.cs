@@ -8,7 +8,13 @@ namespace Kite.AutoTrading.Common.Configurations
         //Setting in global.asax
         public static string LogPath = string.Empty;
 
-        public static TimeZoneInfo IndianTimeZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+        private static TimeZoneInfo IndianTimeZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+
+        public static DateTime IndianTime {
+            get {
+                return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, GlobalConfigurations.IndianTimeZone);
+            }
+        }
 
         public static string CachedDataPath
         {

@@ -52,7 +52,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
         private bool IsMarketClosed()
         {
             //check indian standard time
-            var indianTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, GlobalConfigurations.IndianTimeZone).TimeOfDay;
+            var indianTime = GlobalConfigurations.IndianTime.TimeOfDay;
             var start = new TimeSpan(10, 0, 0); //10 o'clock
             var end = new TimeSpan(15, 30, 0); //12 o'clock
             if ((indianTime > start) && (indianTime < end))
