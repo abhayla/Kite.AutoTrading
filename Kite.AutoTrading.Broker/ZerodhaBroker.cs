@@ -26,15 +26,15 @@ namespace Kite.AutoTrading.Business.Brokers
 
         public ZerodhaBroker(UserSessionModel userSession)
         {
-            _kite = new KiteConnect.Kite(userSession.ApiKey, userSession.AccessToken);
+            _kite = new KiteConnect.Kite(userSession.ApiKey, userSession.AccessToken,Debug:true,Timeout:1000000);
             _userSession = userSession;
             _brokerOrderService = new BrokerOrderService();
         }
 
         public IEnumerable<Candle> GetData(Symbol symbol, string period, DateTime fromDate, DateTime toDate, bool isContinous = false)
         {
-            bool isRetry = true;
-            while (isRetry)
+            int isRetryCount = 5;
+            while (isRetryCount > 0)
             {
                 try
                 {
@@ -50,15 +50,13 @@ namespace Kite.AutoTrading.Business.Brokers
                         var candles = new List<Candle>();
                         for (int i = 0; i < historical.Count; i++)
                             candles.Add(new Candle(Convert.ToDateTime(historical[i].TimeStamp), historical[i].Open, historical[i].High, historical[i].Low, historical[i].Close, historical[i].Volume));
-                        isRetry = false;
                         return candles;
                     }
-                    else
-                        isRetry = false;
+                    isRetryCount = 0;
                 }
                 catch (Exception ex)
                 {
-                    isRetry = true;
+                    isRetryCount -=1;
                     Thread.Sleep(100);
                     ApplicationLogger.LogException(JsonConvert.SerializeObject(ex));
                 }
@@ -74,7 +72,7 @@ namespace Kite.AutoTrading.Business.Brokers
                 results.AddRange(await SetCacheData(symbol, period, fromDate, toDate.AddDays(-1).EndOfDay()));
             else
                 results.AddRange(await SerializerHelper.Deserialize<IEnumerable<Candle>>(cachedFilePath));
-
+            
             //patch todays data
             var todaysData = GetData(symbol, period, toDate.StartOfDay(), toDate);
             if(todaysData!= null && todaysData.Count()>0)
@@ -106,11 +104,11 @@ namespace Kite.AutoTrading.Business.Brokers
             //    brokerOrderModel.Tag = brokerOrderModel.JobId.ToString();
             //    brokerOrderModel.OrderStatus = Convert.ToString(response["status"]);
             //    //Log Into DB
-            //    _brokerOrderService.Create(brokerOrderModel);
+            //    _brokerOrderService.Create(brokerOrderModel);           
 
             //Log Order Information into LogFile
             ApplicationLogger.LogJob(brokerOrderModel.JobId, brokerOrderModel.TransactionType + " Order is Placed at " + DateTime.Now.ToString());
-            ApplicationLogger.LogJob(brokerOrderModel.JobId, "- Order Input " + JsonConvert.SerializeObject(brokerOrderModel));
+            ApplicationLogger.LogJob(brokerOrderModel.JobId, "- Order Request " + JsonConvert.SerializeObject(brokerOrderModel));
             ApplicationLogger.LogJob(brokerOrderModel.JobId, "- Order Response " + JsonConvert.SerializeObject(response));
             return Convert.ToString(response["data"]["order_id"]);
         }
@@ -118,7 +116,7 @@ namespace Kite.AutoTrading.Business.Brokers
         private async Task<IEnumerable<Candle>> SetCacheData(Symbol symbol, string period, DateTime fromDate, DateTime toDate, bool isContinous = false)
         {
             var candles = GetData(symbol, period, fromDate, toDate);
-            if (candles.Count() > 0)
+            if (candles!=null && candles.Count() > 0)
             {
                 await SerializerHelper.Serialize<IEnumerable<Candle>>(candles, GetFilePath(symbol));
                 return candles;

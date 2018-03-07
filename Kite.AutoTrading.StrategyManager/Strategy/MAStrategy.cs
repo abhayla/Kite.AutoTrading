@@ -25,8 +25,8 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
         #region Configurations
 
         private readonly int _MinQuantity = 1;
-        private readonly int _MaxActivePositions = 8;
-        private readonly int _HistoricalDataInDays = -45;
+        private readonly int _MaxActivePositions = 10;
+        private readonly int _HistoricalDataInDays = -30;
         private readonly string _HistoricalDataTimeframe = Constants.INTERVAL_10MINUTE;
         private readonly decimal _RiskPercentage = 0.003m;
         private readonly decimal _RewardPercentage = 0.005m;
@@ -53,14 +53,13 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             StringBuilder sb = new StringBuilder();
             Stopwatch sw = new Stopwatch();
             sw.Start();
-
             
             var indianTime = GlobalConfigurations.IndianTime;
             ApplicationLogger.LogJob(jobId, " job Started " + indianTime.ToString());
 
             //check indian standard time
-            var start = new TimeSpan(9, 30, 0); //10 o'clock
-            var end = new TimeSpan(15, 10, 0); //12 o'clock
+            var start = new TimeSpan(9, 35, 0); //10 o'clock
+            var end = new TimeSpan(15, 15, 0); //12 o'clock
             if (((indianTime.TimeOfDay > start) && (indianTime.TimeOfDay < end)) || isDevelopment)
             {
                 _jobId = jobId;
@@ -79,7 +78,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                     {
                         //var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays),indianTime);
                         var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays), 
-                            new DateTime(2017,3,6,13,30,00));
+                            indianTime);
                         if (candles != null && candles.Count() > 0)
                         {
                             var position = positions.Day.Where(x => x.TradingSymbol == symbol.TradingSymbol).FirstOrDefault();
@@ -116,8 +115,8 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
         {
             var currentCandle = new IndexedCandle(candles, candles.Count() - 1);
             var crossoverCandle = new IndexedCandle(candles, candles.Count() - 2);
-            
-            if(crossoverCandle.IsSmaBullishCross(5,20) && crossoverCandle.Close < currentCandle.Open && currentCandle.IsEmaBullish(5))
+
+            if (crossoverCandle.IsSmaBullishCross(5, 20) && crossoverCandle.Close <= currentCandle.Open && currentCandle.IsEmaBullish(5))
             {
                 _zeropdhaService.PlaceOrder(new BrokerOrderModel()
                 {
@@ -144,7 +143,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             var currentCandle = new IndexedCandle(candles, candles.Count() - 1);
             var crossoverCandle = new IndexedCandle(candles, candles.Count() - 2);
 
-            if (crossoverCandle.IsSmaBearishCross(5, 20) && crossoverCandle.Close < currentCandle.Open && currentCandle.IsEmaBearish(5))
+            if (crossoverCandle.IsSmaBearishCross(5, 20) && crossoverCandle.Close >= currentCandle.Open && currentCandle.IsEmaBearish(5))
             {
                 _zeropdhaService.PlaceOrder(new BrokerOrderModel()
                 {

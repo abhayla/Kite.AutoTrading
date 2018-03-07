@@ -1,4 +1,5 @@
 ﻿using Hangfire;
+using Kite.AutoTrading.Common.Configurations;
 using Kite.AutoTrading.Common.Enums;
 using Kite.AutoTrading.Common.Helper;
 using Kite.AutoTrading.Common.ViewModels;
@@ -47,17 +48,18 @@ namespace Kite.AutoTrading.Controllers
             {
                 MaxLoss = 10,
                 MaxProfit = 10,
-                WatchlistId = 2
+                WatchlistId = 1
             });
 
             //Stopwatch sw = new Stopwatch();
-            MAStrategy my = new MAStrategy();
+            //MAStrategy my = new MAStrategy();
             //sw.Start();
-            await my.Start(job.Id, true);
+            //await my.Start(job.Id, true);
             //sw.Stop();
             //ApplicationLogger.LogJob(job.Id, "Job Completed at (Seconds)" + sw.Elapsed.TotalSeconds.ToString());
 
-            //RecurringJob.AddOrUpdate<MAStrategy>(job.HangfireId, x => x.Start(job.Id, false), Cron.MinuteInterval(5));
+            RecurringJob.AddOrUpdate<MAStrategy>(job.HangfireId, x => x.Start(job.Id, false),
+                Cron.MinuteInterval(5));
             return View();
         }
     }
