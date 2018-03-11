@@ -11,6 +11,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Trady.Core;
@@ -26,7 +27,7 @@ namespace Kite.AutoTrading.Business.Brokers
 
         public ZerodhaBroker(UserSessionModel userSession)
         {
-            _kite = new KiteConnect.Kite(userSession.ApiKey, userSession.AccessToken,Debug:true,Timeout:1000000);
+            _kite = new KiteConnect.Kite(userSession.ApiKey, userSession.AccessToken, Debug: true, Timeout: 1000000);
             _userSession = userSession;
             _brokerOrderService = new BrokerOrderService();
         }
@@ -56,7 +57,7 @@ namespace Kite.AutoTrading.Business.Brokers
                 }
                 catch (Exception ex)
                 {
-                    isRetryCount -=1;
+                    isRetryCount -= 1;
                     Thread.Sleep(100);
                     ApplicationLogger.LogException(JsonConvert.SerializeObject(ex));
                 }
@@ -67,66 +68,103 @@ namespace Kite.AutoTrading.Business.Brokers
         public async Task<IEnumerable<Candle>> GetCachedDataAsync(Symbol symbol, string period, DateTime fromDate, DateTime toDate, bool isContinous = false)
         {
             var results = new List<Candle>();
-            var cachedFilePath = GetFilePath(symbol);
+            var cachedFilePath = GetFilePath(symbol, toDate.AddDays(-1).EndOfDay(), period);
             if (!File.Exists(cachedFilePath))
-                results.AddRange(await SetCacheData(symbol, period, fromDate, toDate.AddDays(-1).EndOfDay()));
+            {
+                var cachedData = await SetCacheData(symbol, period, fromDate, toDate.AddDays(-1).EndOfDay(), cachedFilePath);
+                if(cachedData!=null )
+                    results.AddRange(cachedData);
+            }
             else
                 results.AddRange(await SerializerHelper.Deserialize<IEnumerable<Candle>>(cachedFilePath));
-            
-            //patch todays data
-            var todaysData = GetData(symbol, period, toDate.StartOfDay(), toDate);
-            if(todaysData!= null && todaysData.Count()>0)
-                results.AddRange(todaysData);
-            return results;
+            if (results.Count > 0)
+            {
+                //patch todays data
+                var todaysData = GetData(symbol, period, toDate.StartOfDay(), toDate);
+                if (todaysData != null && todaysData.Count() > 0)
+                    results.AddRange(todaysData);
+                return results;
+            }
+            return null;
         }
 
         public string PlaceOrder(BrokerOrderModel brokerOrderModel)
         {
             Dictionary<string, dynamic> response = null;
-            response = this._kite.PlaceOrder(
-                    Exchange: brokerOrderModel.Exchange,
-                    TradingSymbol: brokerOrderModel.TradingSymbol,
-                    TransactionType: brokerOrderModel.TransactionType,
-                    Quantity: brokerOrderModel.Quantity,
-                    Price: brokerOrderModel.Price,
-                    OrderType: brokerOrderModel.OrderType,
-                    Product: brokerOrderModel.Product,
-                    Variety: brokerOrderModel.Variety,
-                    Validity: brokerOrderModel.Validity,
-                    TriggerPrice: brokerOrderModel.TriggerPrice,
-                    Tag: brokerOrderModel.JobId.ToString()
-                );
-
-
-            //if (!string.IsNullOrWhiteSpace(orderId))
-            //{
-            //    brokerOrderModel.BrokerOrderId = orderId;
-            //    brokerOrderModel.Tag = brokerOrderModel.JobId.ToString();
-            //    brokerOrderModel.OrderStatus = Convert.ToString(response["status"]);
-            //    //Log Into DB
-            //    _brokerOrderService.Create(brokerOrderModel);           
-
-            //Log Order Information into LogFile
-            ApplicationLogger.LogJob(brokerOrderModel.JobId, brokerOrderModel.TransactionType + " Order is Placed at " + DateTime.Now.ToString());
-            ApplicationLogger.LogJob(brokerOrderModel.JobId, "- Order Request " + JsonConvert.SerializeObject(brokerOrderModel));
-            ApplicationLogger.LogJob(brokerOrderModel.JobId, "- Order Response " + JsonConvert.SerializeObject(response));
-            return Convert.ToString(response["data"]["order_id"]);
+            try
+            {                 
+                if (brokerOrderModel.Variety == Constants.VARIETY_CO)
+                    response = this._kite.PlaceOrder(
+                        Exchange: brokerOrderModel.Exchange,
+                        TradingSymbol: brokerOrderModel.TradingSymbol,
+                        TransactionType: brokerOrderModel.TransactionType,
+                        Quantity: brokerOrderModel.Quantity,
+                        Price: brokerOrderModel.Price,
+                        OrderType: brokerOrderModel.OrderType,
+                        Product: brokerOrderModel.Product,
+                        Variety: brokerOrderModel.Variety,
+                        Validity: brokerOrderModel.Validity,
+                        TriggerPrice: brokerOrderModel.TriggerPrice,
+                        Tag: brokerOrderModel.JobId.ToString()
+                    );
+                else if (brokerOrderModel.Variety == Constants.VARIETY_BO)
+                    response = this._kite.PlaceOrder(
+                        Exchange: brokerOrderModel.Exchange,
+                        TradingSymbol: brokerOrderModel.TradingSymbol,
+                        TransactionType: brokerOrderModel.TransactionType,
+                        Quantity: brokerOrderModel.Quantity,
+                        Price: brokerOrderModel.Price,
+                        Product: brokerOrderModel.Product,
+                        OrderType: brokerOrderModel.OrderType,
+                        Validity: brokerOrderModel.Validity,
+                        Variety: brokerOrderModel.Variety,
+                        TriggerPrice: GetRoundToTick(brokerOrderModel.TriggerPrice.Value, brokerOrderModel.TickSize.Value),
+                        SquareOffValue: GetRoundToTick(brokerOrderModel.SquareOffValue.Value, brokerOrderModel.TickSize.Value),
+                        StoplossValue: GetRoundToTick(brokerOrderModel.StoplossValue.Value, brokerOrderModel.TickSize.Value),
+                        TrailingStoploss: GetRoundToTick(brokerOrderModel.TrailingStoploss.Value, brokerOrderModel.TickSize.Value)
+                    );
+                return Convert.ToString(response["data"]["order_id"]);
+            }
+            finally
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append(brokerOrderModel.TransactionType + " Order is Placed at " + DateTime.Now.ToString() + Environment.NewLine);
+                sb.Append("- Order Request " + JsonConvert.SerializeObject(brokerOrderModel) + Environment.NewLine);
+                sb.Append("- Order Response " + JsonConvert.SerializeObject(response) + Environment.NewLine);
+                ApplicationLogger.LogJob(brokerOrderModel.JobId, sb.ToString());
+            }
         }
 
-        private async Task<IEnumerable<Candle>> SetCacheData(Symbol symbol, string period, DateTime fromDate, DateTime toDate, bool isContinous = false)
+
+        #region PRIVATE_METHODS
+        private async Task<IEnumerable<Candle>> SetCacheData(Symbol symbol, string period, DateTime fromDate, DateTime toDate, string cachedFilePath, bool isContinous = false)
         {
             var candles = GetData(symbol, period, fromDate, toDate);
-            if (candles!=null && candles.Count() > 0)
+            if (candles != null && candles.Count() > 0)
             {
-                await SerializerHelper.Serialize<IEnumerable<Candle>>(candles, GetFilePath(symbol));
+                await SerializerHelper.Serialize<IEnumerable<Candle>>(candles, cachedFilePath);
                 return candles;
             }
             return null;
         }
 
-        private string GetFilePath(Symbol symbol)
-        {           
-            return GlobalConfigurations.CachedDataPath + symbol.TradingSymbol + ".bin";
+        private string GetFilePath(Symbol symbol, DateTime toDate, string period)
+        {
+            return string.Format("{0}{1}-{2}-{3}.bin",
+                GlobalConfigurations.CachedDataPath,
+                symbol.TradingSymbol,
+                toDate.ToString("yyyy-dd-M"),
+                period);
         }
+
+        private decimal GetRoundToTick(decimal price, decimal tickSize)
+        {
+            var tickSizeDouble = Convert.ToDouble(tickSize);
+            var priceDouble = Math.Round(Convert.ToDouble(price),2);
+
+            return Convert.ToDecimal(priceDouble - priceDouble % tickSizeDouble + ((priceDouble % tickSizeDouble < tickSizeDouble / 2) ? 0.0 : tickSizeDouble));
+        }
+
+        #endregion
     }
 }

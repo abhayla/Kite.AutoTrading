@@ -2,6 +2,8 @@
 using Newtonsoft.Json;
 using System;
 using System.IO;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 
@@ -9,35 +11,47 @@ namespace Kite.AutoTrading.Common.Helper
 {
     public static class ApplicationLogger
     {
+        static ReaderWriterLock locker = new ReaderWriterLock();
+
         public static void LogException(string ExceptionLog)
         {
             string filepath = GetFilePath();
-            //using (StreamWriter sw = File.AppendText(filepath))
-            //{
-            //    sw.WriteLineAsync();
-            //    sw.WriteLineAsync();
-            //    sw.WriteLineAsync();
-            //}
-            File.AppendAllText(filepath, "-----------Exception Details on " + " " + DateTime.Now.ToString() + "-----------------" + Environment.NewLine);
-            File.AppendAllText(filepath, JsonConvert.SerializeObject(ExceptionLog, Newtonsoft.Json.Formatting.Indented) + Environment.NewLine);
-            File.AppendAllText(filepath, "--------------------------------*End*------------------------------------------" + Environment.NewLine);
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("-----------Exception Details on " + " " + DateTime.Now.ToString() + "-----------------");
+            sb.AppendLine(JsonConvert.SerializeObject(ExceptionLog, Newtonsoft.Json.Formatting.Indented));
+            sb.AppendLine("--------------------------------*End*------------------------------------------");
+            try
+            {
+                locker.AcquireWriterLock(int.MaxValue); 
+                File.AppendAllText(filepath, sb.ToString());
+            }
+            finally
+            {
+                locker.ReleaseWriterLock();
+            }
         }
 
-        public static async Task LogJobAsync(int jobId, string message)
-        {
-            string filepath = GetFilePath(jobId);
-            using (StreamWriter sw = File.AppendText(filepath))
-                await sw.WriteLineAsync(message);
-        }
+        //public static async Task LogJobAsync(int jobId, string message)
+        //{
+        //    string filepath = GetFilePath(jobId);
+        //    using (StreamWriter sw = File.AppendText(filepath))
+        //        await sw.WriteLineAsync(message);
+        //}
 
         public static void LogJob(int jobId, string message)
         {
             string filepath = GetFilePath(jobId);
-            //using (StreamWriter sw = File.AppendText(filepath))
-            //    sw.WriteLine(message);
-            File.AppendAllText(filepath, message + Environment.NewLine);
+            try
+            {
+                locker.AcquireWriterLock(int.MaxValue);
+                File.AppendAllText(filepath, message + Environment.NewLine);
+            }
+            finally
+            {
+                locker.ReleaseWriterLock();
+            }
         }
-
+        
         private static string GetFilePath(int? jobId = null)
         {
             string filepath = string.Empty;

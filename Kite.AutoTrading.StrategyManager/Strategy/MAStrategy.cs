@@ -19,17 +19,17 @@ using Trady.Core;
 
 namespace Kite.AutoTrading.StrategyManager.Strategy
 {
-    public class MAStrategy : IStrategy
+    public class MAStrategy
     {
 
         #region Configurations
 
         private readonly int _MinQuantity = 1;
         private readonly int _MaxActivePositions = 10;
-        private readonly int _HistoricalDataInDays = -30;
-        private readonly string _HistoricalDataTimeframe = Constants.INTERVAL_10MINUTE;
-        private readonly decimal _RiskPercentage = 0.003m;
-        private readonly decimal _RewardPercentage = 0.005m;
+        private readonly int _HistoricalDataInDays = -5;
+        private readonly string _HistoricalDataTimeframe = Constants.INTERVAL_5MINUTE;
+        private readonly decimal _RiskPercentage = 0.0035m;
+        private readonly decimal _RewardPercentage = 0.0065m;
 
         #endregion
 
@@ -53,7 +53,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             StringBuilder sb = new StringBuilder();
             Stopwatch sw = new Stopwatch();
             sw.Start();
-            
+
             var indianTime = GlobalConfigurations.IndianTime;
             ApplicationLogger.LogJob(jobId, " job Started " + indianTime.ToString());
 
@@ -73,26 +73,21 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                     _zeropdhaService = new ZerodhaBroker(AutoMapper.Mapper.Map<UserSessionModel>(userSession));
                     var positions = _zeropdhaService._kite.GetPositions();
                     var orders = _zeropdhaService._kite.GetOrders();
-
-                    await symbols.ParallelForEachAsync(async symbol =>
+                    if (positions.Day.Count() < _MaxActivePositions)
                     {
-                        //var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays),indianTime);
-                        var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays), 
-                            indianTime);
-                        if (candles != null && candles.Count() > 0)
+                        await symbols.ParallelForEachAsync(async symbol =>
                         {
-                            var position = positions.Day.Where(x => x.TradingSymbol == symbol.TradingSymbol).FirstOrDefault();
-                            var order = orders.Where(x => x.Tradingsymbol == symbol.TradingSymbol && x.Status == "TRIGGER PENDING").OrderByDescending(x => x.OrderTimestamp).FirstOrDefault();
-                            var parentOrder = orders.Where(x => x.OrderId == order.ParentOrderId).FirstOrDefault();
-                            if (position.Quantity != 0)
-                                SquareOffOpenPosition(symbol, candles, position, order, parentOrder);
-                            else if (positions.Day != null && positions.Day.Count() < _MaxActivePositions)
+                            //var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays),indianTime);
+                            var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays),
+                                    indianTime);
+                            if (candles != null && candles.Count() > 0)
                             {
-                                if (!BullishScan(symbol, candles))
-                                    BearishScan(symbol, candles);
+                                var position = positions.Day.Where(x => x.TradingSymbol == symbol.TradingSymbol).FirstOrDefault();
+                                if (position.Quantity == 0)
+                                    Scan(symbol, candles);
                             }
-                        }
-                    });
+                        });
+                    }
 
                     //Update Status after every round of scanning
                     job.Status = JobStatus.Running.ToString();
@@ -111,54 +106,63 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
 
         }
 
-        public bool BullishScan(Symbol symbol, IEnumerable<Candle> candles)
+        public bool Scan(Symbol symbol, IEnumerable<Candle> candles)
         {
+            //var crossoverCandle = new IndexedCandle(candles, candles.Count() - 2);
             var currentCandle = new IndexedCandle(candles, candles.Count() - 1);
-            var crossoverCandle = new IndexedCandle(candles, candles.Count() - 2);
+            var riskValue = currentCandle.Close * Convert.ToDecimal(_RiskPercentage);
 
-            if (crossoverCandle.IsSmaBullishCross(5, 20) && crossoverCandle.Close <= currentCandle.Open && currentCandle.IsEmaBullish(5))
+            var fiveEma = candles.Ema(5)[candles.Count() - 1];
+            var twentyEma = candles.Ema(20)[candles.Count() - 1];
+            var twentySma = candles.Sma(20)[candles.Count() - 1];
+
+            if (currentCandle.Prev.IsSmaBullishCross(5, 20) && currentCandle.Prev.Close <= currentCandle.Open
+                && currentCandle.Prev.GetBody() < currentCandle.GetBody())
             {
+                //Place Buy Order
                 _zeropdhaService.PlaceOrder(new BrokerOrderModel()
                 {
                     JobId = _jobId,
                     SymbolId = symbol.Id,
+                    TickSize = symbol.TickSize,
                     Exchange = symbol.Exchange,
                     TradingSymbol = symbol.TradingSymbol,
-                    InstrumentToken = symbol.InstrumentToken,
                     TransactionType = Constants.TRANSACTION_TYPE_BUY,
                     Quantity = _MinQuantity,
-                    OrderType = Constants.ORDER_TYPE_MARKET,
+                    Price = currentCandle.Close,
                     Product = Constants.PRODUCT_MIS,
-                    Variety = Constants.VARIETY_CO,
+                    OrderType = Constants.ORDER_TYPE_LIMIT,
                     Validity = Constants.VALIDITY_DAY,
-                    TriggerPrice = Convert.ToInt32(((currentCandle.Close - (currentCandle.Close * Convert.ToDecimal(_RiskPercentage))) / symbol.TickSize)) * symbol.TickSize
+                    Variety = Constants.VARIETY_BO,
+                    TriggerPrice = (currentCandle.Close - riskValue),
+                    SquareOffValue = (currentCandle.Close * Convert.ToDecimal(_RewardPercentage)),
+                    StoplossValue = riskValue,
+                    TrailingStoploss = (riskValue / 2) < 1 ? 1 : (riskValue / 2)
                 });
                 return true;
             }
-            return false;
-        }
-
-        public bool BearishScan(Symbol symbol, IEnumerable<Candle> candles)
-        {
-            var currentCandle = new IndexedCandle(candles, candles.Count() - 1);
-            var crossoverCandle = new IndexedCandle(candles, candles.Count() - 2);
-
-            if (crossoverCandle.IsSmaBearishCross(5, 20) && crossoverCandle.Close >= currentCandle.Open && currentCandle.IsEmaBearish(5))
+            else if (currentCandle.Prev.IsSmaBearishCross(5, 20) && currentCandle.Prev.Close >= currentCandle.Open
+                && currentCandle.Prev.GetBody() < currentCandle.GetBody())
             {
+                //Place Buy Order
                 _zeropdhaService.PlaceOrder(new BrokerOrderModel()
                 {
                     JobId = _jobId,
                     SymbolId = symbol.Id,
+                    TickSize = symbol.TickSize,
                     Exchange = symbol.Exchange,
                     TradingSymbol = symbol.TradingSymbol,
-                    InstrumentToken = symbol.InstrumentToken,
-                    TransactionType = Constants.TRANSACTION_TYPE_BUY,
+                    TransactionType = Constants.TRANSACTION_TYPE_SELL,
                     Quantity = _MinQuantity,
-                    OrderType = Constants.ORDER_TYPE_MARKET,
+                    Price = currentCandle.Close,
                     Product = Constants.PRODUCT_MIS,
-                    Variety = Constants.VARIETY_CO,
+                    OrderType = Constants.ORDER_TYPE_LIMIT,
                     Validity = Constants.VALIDITY_DAY,
-                    TriggerPrice = Convert.ToInt32(((currentCandle.Close - (currentCandle.Close * Convert.ToDecimal(_RiskPercentage))) / symbol.TickSize)) * symbol.TickSize
+                    Variety = Constants.VARIETY_BO,
+                    TriggerPrice = (currentCandle.Close + riskValue),
+                    SquareOffValue = (currentCandle.Close * Convert.ToDecimal(_RewardPercentage)),
+                    StoplossValue = riskValue,
+                    TrailingStoploss = (riskValue / 2) < 1 ? 1 : (riskValue / 2)
                 });
                 return true;
             }
@@ -170,7 +174,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             var indexedCandle = new IndexedCandle(candles, candles.Count() - 1);
             var rewardAmount = parentOrder.AveragePrice * _RewardPercentage;
             if (position.Quantity < 0)
-            {           
+            {
                 //close sell position
                 if (indexedCandle.Close <= parentOrder.AveragePrice - (rewardAmount))
                 {
@@ -190,12 +194,11 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                     " parentOrder.Price - (rewardAmount) -> " + (parentOrder.AveragePrice - (rewardAmount)) +
                     " indexedCandle.IsMacdOscBullish(12,26,9) -> " + indexedCandle.IsMacdOscBullish(12, 26, 9));
                     _zeropdhaService._kite.CancelOrder(order.OrderId, Constants.VARIETY_CO, order.ParentOrderId);
-                    _zeropdhaService._kite.CancelOrder(order.OrderId, Constants.VARIETY_CO, order.ParentOrderId);
                     return true;
                 }
             }
             return false;
         }
-        
+
     }
 }

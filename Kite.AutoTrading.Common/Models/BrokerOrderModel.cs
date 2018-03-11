@@ -23,5 +23,6 @@
         public string BrokerOrderId { get; set; }
         public int SymbolId { get; set; }
         public int JobId { get; set; }
+        public decimal? TickSize { get; set; }
     }
 }
