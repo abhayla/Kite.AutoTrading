@@ -11,7 +11,8 @@ namespace Kite.AutoTrading.Common.Helper
 {
     public static class ApplicationLogger
     {
-        static ReaderWriterLock locker = new ReaderWriterLock();
+        static ReaderWriterLock exceptionLocker = new ReaderWriterLock();
+        static ReaderWriterLock logLocker = new ReaderWriterLock();
 
         public static void LogException(string ExceptionLog)
         {
@@ -22,12 +23,12 @@ namespace Kite.AutoTrading.Common.Helper
             sb.AppendLine("--------------------------------*End*------------------------------------------");
             try
             {
-                locker.AcquireWriterLock(int.MaxValue); 
+                exceptionLocker.AcquireWriterLock(int.MaxValue);
                 File.AppendAllText(filepath, sb.ToString());
             }
             finally
             {
-                locker.ReleaseWriterLock();
+                exceptionLocker.ReleaseWriterLock();
             }
         }
 
@@ -43,12 +44,12 @@ namespace Kite.AutoTrading.Common.Helper
             string filepath = GetFilePath(jobId);
             try
             {
-                locker.AcquireWriterLock(int.MaxValue);
+                logLocker.AcquireWriterLock(int.MaxValue);
                 File.AppendAllText(filepath, message + Environment.NewLine);
             }
             finally
             {
-                locker.ReleaseWriterLock();
+                logLocker.ReleaseWriterLock();
             }
         }
         

@@ -54,7 +54,7 @@ namespace Kite.AutoTrading.Controllers
             //Stopwatch sw = new Stopwatch();
             //MAStrategy my = new MAStrategy();
             //sw.Start();
-            //await my.Start(job.Id, true);
+           //await my.Start(job.Id, true);
             //sw.Stop();
             //ApplicationLogger.LogJob(job.Id, "Job Completed at (Seconds)" + sw.Elapsed.TotalSeconds.ToString());
 

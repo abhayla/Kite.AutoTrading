@@ -27,7 +27,7 @@ namespace Kite.AutoTrading.Business.Brokers
 
         public ZerodhaBroker(UserSessionModel userSession)
         {
-            _kite = new KiteConnect.Kite(userSession.ApiKey, userSession.AccessToken, Debug: true, Timeout: 1000000);
+            _kite = new KiteConnect.Kite(userSession.ApiKey, userSession.AccessToken);
             _userSession = userSession;
             _brokerOrderService = new BrokerOrderService();
         }
@@ -46,20 +46,24 @@ namespace Kite.AutoTrading.Business.Brokers
                         Interval: period,
                         Continuous: isContinous
                     );
-                    if (historical.Count > 0)
+                    if (historical != null && historical.Count > 0)
                     {
                         var candles = new List<Candle>();
                         for (int i = 0; i < historical.Count; i++)
                             candles.Add(new Candle(Convert.ToDateTime(historical[i].TimeStamp), historical[i].Open, historical[i].High, historical[i].Low, historical[i].Close, historical[i].Volume));
                         return candles;
                     }
-                    isRetryCount = 0;
+                    isRetryCount -= 1;
                 }
                 catch (Exception ex)
                 {
                     isRetryCount -= 1;
                     Thread.Sleep(100);
-                    ApplicationLogger.LogException(JsonConvert.SerializeObject(ex));
+
+                    ApplicationLogger.LogException("Exception Occured in GetData() for Sybmol : " + JsonConvert.SerializeObject(symbol) + Environment.NewLine +
+                    "FromDate : " + fromDate.ToString() + Environment.NewLine +
+                    "ToDate : " + toDate.ToString() + Environment.NewLine +
+                    "Exception : " + JsonConvert.SerializeObject(ex));                    
                 }
             }
             return null;
@@ -77,13 +81,16 @@ namespace Kite.AutoTrading.Business.Brokers
             }
             else
                 results.AddRange(await SerializerHelper.Deserialize<IEnumerable<Candle>>(cachedFilePath));
+
             if (results.Count > 0)
             {
                 //patch todays data
                 var todaysData = GetData(symbol, period, toDate.StartOfDay(), toDate);
                 if (todaysData != null && todaysData.Count() > 0)
+                {
                     results.AddRange(todaysData);
-                return results;
+                    return results;
+                }
             }
             return null;
         }
