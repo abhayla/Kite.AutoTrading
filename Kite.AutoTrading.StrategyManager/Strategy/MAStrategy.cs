@@ -4,7 +4,6 @@ using Kite.AutoTrading.Common.Configurations;
 using Kite.AutoTrading.Common.Enums;
 using Kite.AutoTrading.Common.Helper;
 using Kite.AutoTrading.Common.Models;
-using Kite.AutoTrading.Common.Utility;
 using Kite.AutoTrading.Data.DataServices;
 using Kite.AutoTrading.Data.EF;
 using KiteConnect;
@@ -13,13 +12,13 @@ using System;
 using System.Collections.Async;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Trady.Analysis;
-using Trady.Analysis.Indicator;
 using Trady.Core;
+using Kite.AutoTrading.StrategyManager.Helper;
+
 
 namespace Kite.AutoTrading.StrategyManager.Strategy
 {
@@ -32,8 +31,8 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
         private readonly int _MaxActivePositions = 10;
         private readonly int _HistoricalDataInDays = -5;
         private readonly string _HistoricalDataTimeframe = Constants.INTERVAL_3MINUTE;
-        private readonly decimal _RiskPercentage = 0.0035m;
-        private readonly decimal _RewardPercentage = 0.006m;
+        private readonly decimal _RiskPercentage = 0.002m;
+        private readonly decimal _RewardPercentage = 0.0045m;
 
         #endregion
 
@@ -52,7 +51,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             _strategyService = new StrategyService();
         }
 
-        [DisableConcurrentExecution(timeoutInSeconds: 5 * 60)]
+        [DisableConcurrentExecution(timeoutInSeconds: 3 * 60)]
         public async Task Start(int jobId, bool isDevelopment = false)
         {
             _jobId = jobId;
@@ -93,7 +92,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                         await symbols.ParallelForEachAsync(async symbol =>
                         {
                             var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays),
-                                    indianTime);
+                                    indianTime,isDevelopment:isDevelopment);
                             if (candles != null && candles.Count() > 0)
                             {
                                 var position = positions.Day.Where(x => x.TradingSymbol == symbol.TradingSymbol).FirstOrDefault();
@@ -123,12 +122,14 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
 
         public bool Scan(Symbol symbol, IEnumerable<Candle> candles)
         {
-            //var crossoverCandle = new IndexedCandle(candles, candles.Count() - 2);
             var currentCandle = new IndexedCandle(candles, candles.Count() - 1);
             
             var riskValue = currentCandle.Close * Convert.ToDecimal(_RiskPercentage);
+            var rewardValue = (currentCandle.Close * Convert.ToDecimal(_RewardPercentage));
 
-            if (currentCandle.Prev.IsSmaBullishCross(5, 20) && currentCandle.Prev.Close <= currentCandle.Open
+            if (currentCandle.Prev.IsSmaBullishCross(5, 20) //EMA must be Bullish
+                && currentCandle.IsBullishExt() && currentCandle.Prev.IsBullishExt()  //Both candles must be Bullish or Green candles
+                && currentCandle.Prev.Close <= currentCandle.Open
                 && currentCandle.Prev.GetBody() < currentCandle.GetBody())
             {
                 //Place Buy Order
@@ -147,13 +148,19 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                     Validity = Constants.VALIDITY_DAY,
                     Variety = Constants.VARIETY_BO,
                     TriggerPrice = (currentCandle.Close - riskValue),
-                    SquareOffValue = (currentCandle.Close * Convert.ToDecimal(_RewardPercentage)),
-                    StoplossValue = riskValue,
-                    TrailingStoploss = (riskValue * 0.5m) < 1 ? 1 : (riskValue * 0.5m)
+                    SquareOffValue = rewardValue,
+                    StoplossValue = riskValue
+                    //TrailingStoploss = (riskValue * 0.5m) < 1 ? 1 : (riskValue * 0.5m)
                 });
+                //Log Candle
+                ApplicationLogger.LogJob(_jobId,
+                    "Buying Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
+                    "Buying Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
                 return true;
             }
-            else if (currentCandle.Prev.IsSmaBearishCross(5, 20) && currentCandle.Prev.Close >= currentCandle.Open
+            else if (currentCandle.Prev.IsSmaBearishCross(5, 20) 
+                && currentCandle.IsBearishExt() && currentCandle.Prev.IsBearishExt()
+                && currentCandle.Prev.Close >= currentCandle.Open
                 && currentCandle.Prev.GetBody() < currentCandle.GetBody())
             {
                 //Place SELL Order
@@ -172,10 +179,14 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                     Validity = Constants.VALIDITY_DAY,
                     Variety = Constants.VARIETY_BO,
                     TriggerPrice = (currentCandle.Close + riskValue),
-                    SquareOffValue = (currentCandle.Close * Convert.ToDecimal(_RewardPercentage)),
+                    SquareOffValue = rewardValue,
                     StoplossValue = riskValue,
-                    TrailingStoploss = (riskValue * 0.5m) < 1 ? 1 : (riskValue * 0.5m)
+                    //TrailingStoploss = (riskValue * 0.5m) < 1 ? 1 : (riskValue * 0.5m)
                 });
+                //Log Candle
+                ApplicationLogger.LogJob(_jobId,
+                    "Selling Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
+                    "Selling Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
                 return true;
             }
             return false;

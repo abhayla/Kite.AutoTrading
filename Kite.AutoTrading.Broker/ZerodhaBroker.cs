@@ -69,7 +69,7 @@ namespace Kite.AutoTrading.Business.Brokers
             return null;
         }
 
-        public async Task<IEnumerable<Candle>> GetCachedDataAsync(Symbol symbol, string period, DateTime fromDate, DateTime toDate, bool isContinous = false)
+        public async Task<IEnumerable<Candle>> GetCachedDataAsync(Symbol symbol, string period, DateTime fromDate, DateTime toDate, bool isContinous = false, bool isDevelopment=false)
         {
             var results = new List<Candle>();
             var cachedFilePath = GetFilePath(symbol, toDate.AddDays(-1).EndOfDay(), period);
@@ -91,7 +91,11 @@ namespace Kite.AutoTrading.Business.Brokers
                     results.AddRange(todaysData);
                     return results;
                 }
+                else if (isDevelopment)
+                    return results;
             }
+
+            
             return null;
         }
 
@@ -127,14 +131,15 @@ namespace Kite.AutoTrading.Business.Brokers
                         Variety: brokerOrderModel.Variety,
                         TriggerPrice: GetRoundToTick(brokerOrderModel.TriggerPrice.Value, brokerOrderModel.TickSize.Value),
                         SquareOffValue: GetRoundToTick(brokerOrderModel.SquareOffValue.Value, brokerOrderModel.TickSize.Value),
-                        StoplossValue: GetRoundToTick(brokerOrderModel.StoplossValue.Value, brokerOrderModel.TickSize.Value),
-                        TrailingStoploss: GetRoundToTick(brokerOrderModel.TrailingStoploss.Value, brokerOrderModel.TickSize.Value)
+                        StoplossValue: GetRoundToTick(brokerOrderModel.StoplossValue.Value, brokerOrderModel.TickSize.Value)
+                        //TrailingStoploss: GetRoundToTick(brokerOrderModel.TrailingStoploss.Value, brokerOrderModel.TickSize.Value)
                     );
                 return Convert.ToString(response["data"]["order_id"]);
             }
             finally
             {
                 StringBuilder sb = new StringBuilder();
+                sb.Append("-----------------------------------------------------------------------------------" + Environment.NewLine);
                 sb.Append(brokerOrderModel.TransactionType + " Order is Placed at " + DateTime.Now.ToString() + Environment.NewLine);
                 sb.Append("- Order Request " + JsonConvert.SerializeObject(brokerOrderModel) + Environment.NewLine);
                 sb.Append("- Order Response " + JsonConvert.SerializeObject(response) + Environment.NewLine);
@@ -143,7 +148,8 @@ namespace Kite.AutoTrading.Business.Brokers
         }
 
 
-        #region PRIVATE_METHODS
+        #region PRIVATE_METHODS        
+
         private async Task<IEnumerable<Candle>> SetCacheData(Symbol symbol, string period, DateTime fromDate, DateTime toDate, string cachedFilePath, bool isContinous = false)
         {
             var candles = GetData(symbol, period, fromDate, toDate);

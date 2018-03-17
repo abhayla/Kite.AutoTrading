@@ -3,7 +3,7 @@
     public class BrokerOrderModel
     {
         public string TradingSymbol { get; set; }
-        public string InstrumentToken { get; set; }
+        //public string InstrumentToken { get; set; }
         public string Exchange { get; set; }
         public string TransactionType { get; set; }
         public int Quantity { get; set; }
