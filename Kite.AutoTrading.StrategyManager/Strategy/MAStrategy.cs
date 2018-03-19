@@ -33,6 +33,8 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
         private readonly string _HistoricalDataTimeframe = Constants.INTERVAL_3MINUTE;
         private readonly decimal _RiskPercentage = 0.002m;
         private readonly decimal _RewardPercentage = 0.0045m;
+        private readonly decimal _BuySellOnRisePercentage = 0.001m;
+        private readonly int _OrderExpireTimeMinutes = 10;
 
         #endregion
 
@@ -66,8 +68,8 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             var marketStart = new TimeSpan(9, 30, 0);
             var marketEnd = new TimeSpan(15, 15, 0);
 
-            //var preMarketStart = new TimeSpan(8, 00, 0);
-            //var preMarketEnd = new TimeSpan(9, 10, 0);
+            var preMarketStart = new TimeSpan(8, 00, 0);
+            var preMarketEnd = new TimeSpan(9, 10, 0);
 
             //if (((indianTime.TimeOfDay > preMarketStart) && (indianTime.TimeOfDay < preMarketEnd)) || isDevelopment)
             //{
@@ -92,12 +94,14 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                         await symbols.ParallelForEachAsync(async symbol =>
                         {
                             var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays),
-                                    indianTime,isDevelopment:isDevelopment);
+                                    indianTime, isDevelopment: isDevelopment);
                             if (candles != null && candles.Count() > 0)
                             {
                                 var position = positions.Day.Where(x => x.TradingSymbol == symbol.TradingSymbol).FirstOrDefault();
-                                var order = orders.Where(x => x.Tradingsymbol == symbol.TradingSymbol && x.Status == "OPEN").Count();
-                                if (position.Quantity == 0 && order == 0)
+                                var order = orders.Where(x => x.Tradingsymbol == symbol.TradingSymbol && x.Status == "OPEN");
+                                //check whether orde is expired 
+                                IsOrderExpired(position, order, indianTime);
+                                if (position.Quantity == 0 && order.Count() == 0)
                                     Scan(symbol, candles);
                             }
                         });
@@ -123,11 +127,12 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
         public bool Scan(Symbol symbol, IEnumerable<Candle> candles)
         {
             var currentCandle = new IndexedCandle(candles, candles.Count() - 1);
-            
+
             var riskValue = currentCandle.Close * Convert.ToDecimal(_RiskPercentage);
             var rewardValue = (currentCandle.Close * Convert.ToDecimal(_RewardPercentage));
+            var buySellRiseValue = currentCandle.Close * Convert.ToDecimal(_BuySellOnRisePercentage);
 
-            if (currentCandle.Prev.IsSmaBullishCross(5, 20) //EMA must be Bullish
+            if (currentCandle.Prev.IsEmaBullishCross(5, 20) //EMA must be Bullish
                 && currentCandle.IsBullishExt() && currentCandle.Prev.IsBullishExt()  //Both candles must be Bullish or Green candles
                 && currentCandle.Prev.Close <= currentCandle.Open
                 && currentCandle.Prev.GetBody() < currentCandle.GetBody())
@@ -142,23 +147,23 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                     TradingSymbol = symbol.TradingSymbol,
                     TransactionType = Constants.TRANSACTION_TYPE_BUY,
                     Quantity = _MinQuantity,
-                    Price = currentCandle.Close,
+                    Price = currentCandle.Close - buySellRiseValue,
                     Product = Constants.PRODUCT_MIS,
                     OrderType = Constants.ORDER_TYPE_LIMIT,
                     Validity = Constants.VALIDITY_DAY,
                     Variety = Constants.VARIETY_BO,
                     TriggerPrice = (currentCandle.Close - riskValue),
                     SquareOffValue = rewardValue,
-                    StoplossValue = riskValue
-                    //TrailingStoploss = (riskValue * 0.5m) < 1 ? 1 : (riskValue * 0.5m)
+                    StoplossValue = riskValue,
+                    TrailingStoploss = (riskValue * 0.75m) < 1 ? 1 : (riskValue * 0.75m)
                 });
                 //Log Candle
                 ApplicationLogger.LogJob(_jobId,
-                    "Buying Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
-                    "Buying Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
+                    GlobalConfigurations.IndianTime + " Buying Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
+                    GlobalConfigurations.IndianTime + " Buying Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
                 return true;
             }
-            else if (currentCandle.Prev.IsSmaBearishCross(5, 20) 
+            else if (currentCandle.Prev.IsEmaBearishCross(5, 20)
                 && currentCandle.IsBearishExt() && currentCandle.Prev.IsBearishExt()
                 && currentCandle.Prev.Close >= currentCandle.Open
                 && currentCandle.Prev.GetBody() < currentCandle.GetBody())
@@ -173,7 +178,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                     TradingSymbol = symbol.TradingSymbol,
                     TransactionType = Constants.TRANSACTION_TYPE_SELL,
                     Quantity = _MinQuantity,
-                    Price = currentCandle.Close,
+                    Price = currentCandle.Close + buySellRiseValue,
                     Product = Constants.PRODUCT_MIS,
                     OrderType = Constants.ORDER_TYPE_LIMIT,
                     Validity = Constants.VALIDITY_DAY,
@@ -181,13 +186,29 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                     TriggerPrice = (currentCandle.Close + riskValue),
                     SquareOffValue = rewardValue,
                     StoplossValue = riskValue,
-                    //TrailingStoploss = (riskValue * 0.5m) < 1 ? 1 : (riskValue * 0.5m)
+                    TrailingStoploss = (riskValue * 0.75m) < 1 ? 1 : (riskValue * 0.75m)
                 });
                 //Log Candle
                 ApplicationLogger.LogJob(_jobId,
-                    "Selling Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
-                    "Selling Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
+                    GlobalConfigurations.IndianTime + " Selling Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
+                    GlobalConfigurations.IndianTime + " Selling Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
                 return true;
+            }
+            return false;
+        }
+
+        public bool IsOrderExpired(Position position, IEnumerable<Order> orders, DateTime istTime)
+        {
+            if (orders != null && orders.Count() > 0 && position.Quantity == 0)
+            {
+                var order = orders.FirstOrDefault();
+                if (order.OrderTimestamp.HasValue && order.OrderTimestamp.Value.AddMinutes(_OrderExpireTimeMinutes) > istTime)
+                {
+                    //Cancel order because its pending from last 10 minutes
+                    ApplicationLogger.LogJob(_jobId, istTime + " Order Expired :" + JsonConvert.SerializeObject(order));
+                    _zeropdhaService._kite.CancelOrder(OrderId: order.OrderId, ParentOrderId: order.ParentOrderId, Variety: order.Variety);
+                    return true;
+                }
             }
             return false;
         }

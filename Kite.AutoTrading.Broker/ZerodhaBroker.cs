@@ -124,15 +124,15 @@ namespace Kite.AutoTrading.Business.Brokers
                         TradingSymbol: brokerOrderModel.TradingSymbol,
                         TransactionType: brokerOrderModel.TransactionType,
                         Quantity: brokerOrderModel.Quantity,
-                        Price: brokerOrderModel.Price,
+                        Price: GetRoundToTick(brokerOrderModel.Price.Value, brokerOrderModel.TickSize.Value),
                         Product: brokerOrderModel.Product,
                         OrderType: brokerOrderModel.OrderType,
                         Validity: brokerOrderModel.Validity,
                         Variety: brokerOrderModel.Variety,
                         TriggerPrice: GetRoundToTick(brokerOrderModel.TriggerPrice.Value, brokerOrderModel.TickSize.Value),
                         SquareOffValue: GetRoundToTick(brokerOrderModel.SquareOffValue.Value, brokerOrderModel.TickSize.Value),
-                        StoplossValue: GetRoundToTick(brokerOrderModel.StoplossValue.Value, brokerOrderModel.TickSize.Value)
-                        //TrailingStoploss: GetRoundToTick(brokerOrderModel.TrailingStoploss.Value, brokerOrderModel.TickSize.Value)
+                        StoplossValue: GetRoundToTick(brokerOrderModel.StoplossValue.Value, brokerOrderModel.TickSize.Value),
+                        TrailingStoploss: GetRoundToTick(brokerOrderModel.TrailingStoploss.Value, brokerOrderModel.TickSize.Value)
                     );
                 return Convert.ToString(response["data"]["order_id"]);
             }
