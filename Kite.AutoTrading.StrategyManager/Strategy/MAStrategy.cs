@@ -28,12 +28,12 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
         #region Configurations
 
         private readonly int _MinQuantity = 1;
-        private readonly int _MaxActivePositions = 10;
+        private readonly int _MaxActivePositions = 15;
         private readonly int _HistoricalDataInDays = -5;
         private readonly string _HistoricalDataTimeframe = Constants.INTERVAL_3MINUTE;
         private readonly decimal _RiskPercentage = 0.002m;
         private readonly decimal _RewardPercentage = 0.0045m;
-        private readonly decimal _BuySellOnRisePercentage = 0.001m;
+        private readonly decimal _BuySellOnRisePercentage = 0.0015m;
         private readonly int _OrderExpireTimeMinutes = 10;
 
         #endregion
@@ -94,13 +94,14 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                         await symbols.ParallelForEachAsync(async symbol =>
                         {
                             var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays),
-                                    indianTime, isDevelopment: isDevelopment);
+                                    indianTime, 
+                                    isDevelopment: isDevelopment);
                             if (candles != null && candles.Count() > 0)
                             {
                                 var position = positions.Day.Where(x => x.TradingSymbol == symbol.TradingSymbol).FirstOrDefault();
                                 var order = orders.Where(x => x.Tradingsymbol == symbol.TradingSymbol && x.Status == "OPEN");
                                 //check whether orde is expired 
-                                IsOrderExpired(position, order, indianTime);
+                                IsOrderExpired(position, order);
                                 if (position.Quantity == 0 && order.Count() == 0)
                                     Scan(symbol, candles);
                             }
@@ -116,7 +117,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                     ApplicationLogger.LogJob(jobId, " Not Authenticated ! ");
             }
             sw.Stop();
-            ApplicationLogger.LogJob(jobId, " job Completed in (Minutes) - " + sw.Elapsed.TotalMinutes);
+            ApplicationLogger.LogJob(jobId, " job Completed in - " + sw.Elapsed.TotalSeconds + " (Seconds)");
         }
 
         public async Task Stop(int jobId)
@@ -124,85 +125,87 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
 
         }
 
-        public bool Scan(Symbol symbol, IEnumerable<Candle> candles)
+        public int Scan(Symbol symbol, IEnumerable<Candle> candles, bool isPlaceOrder = true)
         {
             var currentCandle = new IndexedCandle(candles, candles.Count() - 1);
-
+            var buySellRiseValue = currentCandle.Close * Convert.ToDecimal(_BuySellOnRisePercentage);
             var riskValue = currentCandle.Close * Convert.ToDecimal(_RiskPercentage);
             var rewardValue = (currentCandle.Close * Convert.ToDecimal(_RewardPercentage));
-            var buySellRiseValue = currentCandle.Close * Convert.ToDecimal(_BuySellOnRisePercentage);
 
-            if (currentCandle.Prev.IsEmaBullishCross(5, 20) //EMA must be Bullish
+            if (currentCandle.Prev.IsEmaBullishCross(5, 10) //EMA must be Bullish
                 && currentCandle.IsBullishExt() && currentCandle.Prev.IsBullishExt()  //Both candles must be Bullish or Green candles
                 && currentCandle.Prev.Close <= currentCandle.Open
                 && currentCandle.Prev.GetBody() < currentCandle.GetBody())
             {
-                //Place Buy Order
-                _zeropdhaService.PlaceOrder(new BrokerOrderModel()
-                {
-                    JobId = _jobId,
-                    SymbolId = symbol.Id,
-                    TickSize = symbol.TickSize,
-                    Exchange = symbol.Exchange,
-                    TradingSymbol = symbol.TradingSymbol,
-                    TransactionType = Constants.TRANSACTION_TYPE_BUY,
-                    Quantity = _MinQuantity,
-                    Price = currentCandle.Close - buySellRiseValue,
-                    Product = Constants.PRODUCT_MIS,
-                    OrderType = Constants.ORDER_TYPE_LIMIT,
-                    Validity = Constants.VALIDITY_DAY,
-                    Variety = Constants.VARIETY_BO,
-                    TriggerPrice = (currentCandle.Close - riskValue),
-                    SquareOffValue = rewardValue,
-                    StoplossValue = riskValue,
-                    TrailingStoploss = (riskValue * 0.75m) < 1 ? 1 : (riskValue * 0.75m)
-                });
+                if (isPlaceOrder)
+                    //Place Buy Order
+                    _zeropdhaService.PlaceOrder(new BrokerOrderModel()
+                    {
+                        JobId = _jobId,
+                        SymbolId = symbol.Id,
+                        TickSize = symbol.TickSize,
+                        Exchange = symbol.Exchange,
+                        TradingSymbol = symbol.TradingSymbol,
+                        TransactionType = Constants.TRANSACTION_TYPE_BUY,
+                        Quantity = _MinQuantity,
+                        Price = currentCandle.Close - buySellRiseValue,
+                        Product = Constants.PRODUCT_MIS,
+                        OrderType = Constants.ORDER_TYPE_LIMIT,
+                        Validity = Constants.VALIDITY_DAY,
+                        Variety = Constants.VARIETY_BO,
+                        TriggerPrice = (currentCandle.Close - (riskValue + buySellRiseValue)),
+                        SquareOffValue = rewardValue,
+                        StoplossValue = riskValue,
+                        TrailingStoploss = (riskValue * 0.75m) < 1 ? 1 : (riskValue * 0.75m)
+                    });
                 //Log Candle
                 ApplicationLogger.LogJob(_jobId,
                     GlobalConfigurations.IndianTime + " Buying Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
                     GlobalConfigurations.IndianTime + " Buying Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
-                return true;
+                return _MinQuantity;
             }
-            else if (currentCandle.Prev.IsEmaBearishCross(5, 20)
+            else if (currentCandle.Prev.IsEmaBearishCross(5, 10)
                 && currentCandle.IsBearishExt() && currentCandle.Prev.IsBearishExt()
                 && currentCandle.Prev.Close >= currentCandle.Open
                 && currentCandle.Prev.GetBody() < currentCandle.GetBody())
             {
-                //Place SELL Order
-                _zeropdhaService.PlaceOrder(new BrokerOrderModel()
-                {
-                    JobId = _jobId,
-                    SymbolId = symbol.Id,
-                    TickSize = symbol.TickSize,
-                    Exchange = symbol.Exchange,
-                    TradingSymbol = symbol.TradingSymbol,
-                    TransactionType = Constants.TRANSACTION_TYPE_SELL,
-                    Quantity = _MinQuantity,
-                    Price = currentCandle.Close + buySellRiseValue,
-                    Product = Constants.PRODUCT_MIS,
-                    OrderType = Constants.ORDER_TYPE_LIMIT,
-                    Validity = Constants.VALIDITY_DAY,
-                    Variety = Constants.VARIETY_BO,
-                    TriggerPrice = (currentCandle.Close + riskValue),
-                    SquareOffValue = rewardValue,
-                    StoplossValue = riskValue,
-                    TrailingStoploss = (riskValue * 0.75m) < 1 ? 1 : (riskValue * 0.75m)
-                });
+                if (isPlaceOrder)
+                    //Place SELL Order
+                    _zeropdhaService.PlaceOrder(new BrokerOrderModel()
+                    {
+                        JobId = _jobId,
+                        SymbolId = symbol.Id,
+                        TickSize = symbol.TickSize,
+                        Exchange = symbol.Exchange,
+                        TradingSymbol = symbol.TradingSymbol,
+                        TransactionType = Constants.TRANSACTION_TYPE_SELL,
+                        Quantity = _MinQuantity,
+                        Price = currentCandle.Close + buySellRiseValue,
+                        Product = Constants.PRODUCT_MIS,
+                        OrderType = Constants.ORDER_TYPE_LIMIT,
+                        Validity = Constants.VALIDITY_DAY,
+                        Variety = Constants.VARIETY_BO,
+                        TriggerPrice = (currentCandle.Close + (riskValue + buySellRiseValue)),
+                        SquareOffValue = rewardValue,
+                        StoplossValue = riskValue,
+                        TrailingStoploss = (riskValue * 0.75m) < 1 ? 1 : (riskValue * 0.75m)
+                    });
                 //Log Candle
                 ApplicationLogger.LogJob(_jobId,
                     GlobalConfigurations.IndianTime + " Selling Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
                     GlobalConfigurations.IndianTime + " Selling Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
-                return true;
+                return -(_MinQuantity);
             }
-            return false;
+            return 0;
         }
 
-        public bool IsOrderExpired(Position position, IEnumerable<Order> orders, DateTime istTime)
+        public bool IsOrderExpired(Position position, IEnumerable<Order> orders)
         {
+            DateTime istTime = GlobalConfigurations.IndianTime;
             if (orders != null && orders.Count() > 0 && position.Quantity == 0)
             {
                 var order = orders.FirstOrDefault();
-                if (order.OrderTimestamp.HasValue && order.OrderTimestamp.Value.AddMinutes(_OrderExpireTimeMinutes) > istTime)
+                if (order.ExchangeTimestamp.HasValue && order.ExchangeTimestamp.Value.AddMinutes(_OrderExpireTimeMinutes) < istTime)
                 {
                     //Cancel order because its pending from last 10 minutes
                     ApplicationLogger.LogJob(_jobId, istTime + " Order Expired :" + JsonConvert.SerializeObject(order));

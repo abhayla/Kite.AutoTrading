@@ -48,17 +48,17 @@ namespace Kite.AutoTrading.Controllers
             {
                 MaxLoss = 10,
                 MaxProfit = 10,
-                WatchlistId = 1
+                WatchlistId = 2
             });
 
-            //Stopwatch sw = new Stopwatch();
-            //MAStrategy my = new MAStrategy();
-            //sw.Start();
-            //await my.Start(job.Id, true);
-            //sw.Stop();
-            //ApplicationLogger.LogJob(job.Id, "Job Completed at (Seconds)" + sw.Elapsed.TotalSeconds.ToString());
+            Stopwatch sw = new Stopwatch();
+            MAStrategy my = new MAStrategy();
+            sw.Start();
+            await my.Start(job.Id, true);
+            sw.Stop();
+            ApplicationLogger.LogJob(job.Id, "Job Completed at (Seconds)" + sw.Elapsed.TotalSeconds.ToString());
 
-            RecurringJob.AddOrUpdate<MAStrategy>(job.HangfireId, x => x.Start(job.Id, false),Cron.MinuteInterval(2));
+            //RecurringJob.AddOrUpdate<MAStrategy>(job.HangfireId, x => x.Start(job.Id, false),Cron.MinuteInterval(2));
             return View();
         }
     }

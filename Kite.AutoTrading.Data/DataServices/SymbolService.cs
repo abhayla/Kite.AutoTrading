@@ -16,6 +16,11 @@ namespace Kite.AutoTrading.Data.DataServices
             _context = new KiteAutotradingEntities();
         }
 
+        public async Task<Symbol> Get(int symbolId)
+        {
+            return await _context.Symbols.Where(x => x.Id == symbolId).FirstOrDefaultAsync();
+        }
+
         public async Task<bool> Sync(IList<Instrument> instruments)
         {
             //await _context.Database.ExecuteSqlCommandAsync("TRUNCATE TABLE trading.Symbol");

@@ -50,7 +50,8 @@ namespace Kite.AutoTrading.Business.Brokers
                     {
                         var candles = new List<Candle>();
                         for (int i = 0; i < historical.Count; i++)
-                            candles.Add(new Candle(Convert.ToDateTime(historical[i].TimeStamp), historical[i].Open, historical[i].High, historical[i].Low, historical[i].Close, historical[i].Volume));
+                            candles.Add(new Candle(Convert.ToDateTime(historical[i].TimeStamp), 
+                                historical[i].Open, historical[i].High, historical[i].Low, historical[i].Close, historical[i].Volume));
                         return candles;
                     }
                     isRetryCount -= 1;
@@ -140,7 +141,7 @@ namespace Kite.AutoTrading.Business.Brokers
             {
                 StringBuilder sb = new StringBuilder();
                 sb.Append("-----------------------------------------------------------------------------------" + Environment.NewLine);
-                sb.Append(brokerOrderModel.TransactionType + " Order is Placed at " + DateTime.Now.ToString() + Environment.NewLine);
+                sb.Append(brokerOrderModel.TransactionType + " Order is Placed at " + GlobalConfigurations.IndianTime.ToString() + Environment.NewLine);
                 sb.Append("- Order Request " + JsonConvert.SerializeObject(brokerOrderModel) + Environment.NewLine);
                 sb.Append("- Order Response " + JsonConvert.SerializeObject(response) + Environment.NewLine);
                 ApplicationLogger.LogJob(brokerOrderModel.JobId, sb.ToString());
