@@ -25,7 +25,7 @@ namespace Kite.AutoTrading.Controllers
             var _zerodhaBroker = new ZerodhaBroker(AutoMapper.Mapper.Map<UserSessionModel>(userSession));
             var instruments = _zerodhaBroker._kite.GetInstruments().Where(x=>x.Exchange=="NSE" || x.Exchange=="BSE").ToList();
             
-            await _symbolService.Sync(instruments);
+            await _symbolService.DataRefereshAsync(instruments);
             return View();
         }
     }

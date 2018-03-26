@@ -245,24 +245,6 @@
     <Reference Include="Trady.Core, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Trady.Core.3.0.0\lib\netstandard2.0\Trady.Core.dll</HintPath>
     </Reference>
-    <Reference Include="Trady.Importer, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Trady.Importer.3.0.0\lib\netstandard2.0\Trady.Importer.dll</HintPath>
-    </Reference>
-    <Reference Include="Trady.Importer.Csv, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Trady.Importer.Csv.3.0.0\lib\netstandard2.0\Trady.Importer.Csv.dll</HintPath>
-    </Reference>
-    <Reference Include="Trady.Importer.Google, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Trady.Importer.Google.3.0.0\lib\netstandard2.0\Trady.Importer.Google.dll</HintPath>
-    </Reference>
-    <Reference Include="Trady.Importer.Quandl, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Trady.Importer.Quandl.3.0.0\lib\netstandard2.0\Trady.Importer.Quandl.dll</HintPath>
-    </Reference>
-    <Reference Include="Trady.Importer.Stooq, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Trady.Importer.Stooq.3.0.0\lib\netstandard2.0\Trady.Importer.Stooq.dll</HintPath>
-    </Reference>
-    <Reference Include="Trady.Importer.Yahoo, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Trady.Importer.Yahoo.3.0.0\lib\netstandard2.0\Trady.Importer.Yahoo.dll</HintPath>
-    </Reference>
     <Reference Include="YahooFinanceApi, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\YahooFinanceApi.1.1.0\lib\netstandard2.0\YahooFinanceApi.dll</HintPath>
     </Reference>

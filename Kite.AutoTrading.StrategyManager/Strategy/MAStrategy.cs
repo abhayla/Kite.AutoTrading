@@ -27,14 +27,23 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
 
         #region Configurations
 
-        private readonly int _MinQuantity = 1;
-        private readonly int _MaxActivePositions = 15;
-        private readonly int _HistoricalDataInDays = -5;
-        private readonly string _HistoricalDataTimeframe = Constants.INTERVAL_3MINUTE;
-        private readonly decimal _RiskPercentage = 0.002m;
-        private readonly decimal _RewardPercentage = 0.0045m;
-        private readonly decimal _BuySellOnRisePercentage = 0.0015m;
-        private readonly int _OrderExpireTimeMinutes = 10;
+        //public readonly int _MinQuantity = 1;
+        public readonly int _MinInvestmentPerOrder = 10000;
+        public readonly int _MaxActivePositions = 15;
+        public readonly int _HistoricalDataInDays = -5;
+        public readonly string _HistoricalDataTimeframe = Constants.INTERVAL_15MINUTE;
+        public readonly decimal _RiskPercentage = 0.003m;
+        public readonly decimal _RewardPercentage = 0.0065m;
+        public readonly decimal _BuySellOnRisePercentage = 0.002m;
+        public readonly int _OrderExpireTimeMinutes = 10;
+        public readonly int _EmaShortPeriod = 3;
+        public readonly int _EmaLongPeriod = 5;
+
+        public readonly TimeSpan preMarketStart = new TimeSpan(8, 00, 0);
+        public readonly TimeSpan preMarketEnd = new TimeSpan(9, 10, 0);
+
+        public readonly TimeSpan marketStart = new TimeSpan(9, 30, 0);
+        public readonly TimeSpan marketEnd = new TimeSpan(15, 05, 0);
 
         #endregion
 
@@ -64,18 +73,13 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             var indianTime = GlobalConfigurations.IndianTime;
             ApplicationLogger.LogJob(jobId, " job Started " + indianTime.ToString());
 
-            //check indian standard time
-            var marketStart = new TimeSpan(9, 30, 0);
-            var marketEnd = new TimeSpan(15, 15, 0);
+            //check indian standard time           
 
-            var preMarketStart = new TimeSpan(8, 00, 0);
-            var preMarketEnd = new TimeSpan(9, 10, 0);
-
-            //if (((indianTime.TimeOfDay > preMarketStart) && (indianTime.TimeOfDay < preMarketEnd)) || isDevelopment)
-            //{
-            //    //Load History Data
-            //    await CacheHistoryData(indianTime.StartOfDay());
-            //}
+            if (((indianTime.TimeOfDay > preMarketStart) && (indianTime.TimeOfDay < preMarketEnd)) || isDevelopment)
+            {
+                //Load History Data
+                await CacheHistoryData(indianTime, isDevelopment);
+            }
 
             if (((indianTime.TimeOfDay > marketStart) && (indianTime.TimeOfDay < marketEnd)) || isDevelopment)
             {
@@ -89,12 +93,13 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                     _zeropdhaService = new ZerodhaBroker(AutoMapper.Mapper.Map<UserSessionModel>(userSession));
                     var positions = _zeropdhaService._kite.GetPositions();
                     var orders = _zeropdhaService._kite.GetOrders();
-                    if (positions.Day.Count() < _MaxActivePositions)
+
+                    if (positions.Day != null && positions.Day.Where(x => x.Quantity != 0).Count() < _MaxActivePositions)
                     {
                         await symbols.ParallelForEachAsync(async symbol =>
                         {
                             var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays),
-                                    indianTime, 
+                                    indianTime,
                                     isDevelopment: isDevelopment);
                             if (candles != null && candles.Count() > 0)
                             {
@@ -114,32 +119,30 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                     await _jobService.Update(job);
                 }
                 else
-                    ApplicationLogger.LogJob(jobId, " Not Authenticated ! ");
+                    ApplicationLogger.LogJob(jobId, " Not Authenticated !");
             }
             sw.Stop();
             ApplicationLogger.LogJob(jobId, " job Completed in - " + sw.Elapsed.TotalSeconds + " (Seconds)");
         }
 
-        public async Task Stop(int jobId)
+        public BrokerOrderModel Scan(Symbol symbol, IEnumerable<Candle> candles, bool isPlaceOrder = true)
         {
-
-        }
-
-        public int Scan(Symbol symbol, IEnumerable<Candle> candles, bool isPlaceOrder = true)
-        {
-            var currentCandle = new IndexedCandle(candles, candles.Count() - 1);
-            var buySellRiseValue = currentCandle.Close * Convert.ToDecimal(_BuySellOnRisePercentage);
-            var riskValue = currentCandle.Close * Convert.ToDecimal(_RiskPercentage);
-            var rewardValue = (currentCandle.Close * Convert.ToDecimal(_RewardPercentage));
-
-            if (currentCandle.Prev.IsEmaBullishCross(5, 10) //EMA must be Bullish
-                && currentCandle.IsBullishExt() && currentCandle.Prev.IsBullishExt()  //Both candles must be Bullish or Green candles
-                && currentCandle.Prev.Close <= currentCandle.Open
-                && currentCandle.Prev.GetBody() < currentCandle.GetBody())
+            BrokerOrderModel brokerOrderModel = null;
+            try
             {
-                if (isPlaceOrder)
-                    //Place Buy Order
-                    _zeropdhaService.PlaceOrder(new BrokerOrderModel()
+                var currentCandle = new IndexedCandle(candles, candles.Count() - 1);
+                var rsi = candles.Rsi(9)[candles.Count() - 1];
+                var buySellRiseValue = currentCandle.Close * Convert.ToDecimal(_BuySellOnRisePercentage);
+                var riskValue = currentCandle.Close * Convert.ToDecimal(_RiskPercentage);
+                var rewardValue = (currentCandle.Close * Convert.ToDecimal(_RewardPercentage));
+
+                if (currentCandle.Prev.IsEmaBullishCross(_EmaShortPeriod, _EmaLongPeriod)
+                    && currentCandle.IsBullishExt() && currentCandle.Prev.IsBullishExt()
+                    //&& currentCandle.Prev.Close <= currentCandle.Open
+                    //&& currentCandle.Prev.GetBody() < currentCandle.GetBody()
+                    && rsi.Tick > 50)
+                {
+                    brokerOrderModel = new BrokerOrderModel()
                     {
                         JobId = _jobId,
                         SymbolId = symbol.Id,
@@ -147,31 +150,33 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                         Exchange = symbol.Exchange,
                         TradingSymbol = symbol.TradingSymbol,
                         TransactionType = Constants.TRANSACTION_TYPE_BUY,
-                        Quantity = _MinQuantity,
+                        Quantity = Convert.ToInt32(_MinInvestmentPerOrder / currentCandle.Close) > 0 ? Convert.ToInt32(_MinInvestmentPerOrder / currentCandle.Close) : 1,
                         Price = currentCandle.Close - buySellRiseValue,
+                        //Price = currentCandle.Close,
                         Product = Constants.PRODUCT_MIS,
                         OrderType = Constants.ORDER_TYPE_LIMIT,
                         Validity = Constants.VALIDITY_DAY,
                         Variety = Constants.VARIETY_BO,
                         TriggerPrice = (currentCandle.Close - (riskValue + buySellRiseValue)),
+                        //TriggerPrice = currentCandle.Close - (riskValue),
                         SquareOffValue = rewardValue,
                         StoplossValue = riskValue,
-                        TrailingStoploss = (riskValue * 0.75m) < 1 ? 1 : (riskValue * 0.75m)
-                    });
-                //Log Candle
-                ApplicationLogger.LogJob(_jobId,
-                    GlobalConfigurations.IndianTime + " Buying Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
-                    GlobalConfigurations.IndianTime + " Buying Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
-                return _MinQuantity;
-            }
-            else if (currentCandle.Prev.IsEmaBearishCross(5, 10)
-                && currentCandle.IsBearishExt() && currentCandle.Prev.IsBearishExt()
-                && currentCandle.Prev.Close >= currentCandle.Open
-                && currentCandle.Prev.GetBody() < currentCandle.GetBody())
-            {
-                if (isPlaceOrder)
-                    //Place SELL Order
-                    _zeropdhaService.PlaceOrder(new BrokerOrderModel()
+                        TrailingStoploss = (riskValue) < 1 ? 1 : (riskValue)
+                    };
+                    if (isPlaceOrder)
+                        _zeropdhaService.PlaceOrder(brokerOrderModel);
+                    //Log Candle
+                    ApplicationLogger.LogJob(_jobId,
+                        GlobalConfigurations.IndianTime + " Buying Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
+                        GlobalConfigurations.IndianTime + " Buying Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
+                }
+                else if (currentCandle.Prev.IsEmaBearishCross(_EmaShortPeriod, _EmaLongPeriod)
+                    && currentCandle.IsBearishExt() && currentCandle.Prev.IsBearishExt()
+                    //&& currentCandle.Prev.Close >= currentCandle.Open
+                    //&& currentCandle.Prev.GetBody() < currentCandle.GetBody()
+                    && rsi.Tick < 50)
+                {
+                    brokerOrderModel = new BrokerOrderModel()
                     {
                         JobId = _jobId,
                         SymbolId = symbol.Id,
@@ -179,24 +184,29 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                         Exchange = symbol.Exchange,
                         TradingSymbol = symbol.TradingSymbol,
                         TransactionType = Constants.TRANSACTION_TYPE_SELL,
-                        Quantity = _MinQuantity,
+                        Quantity = Convert.ToInt32(_MinInvestmentPerOrder / currentCandle.Close) > 0 ? Convert.ToInt32(_MinInvestmentPerOrder / currentCandle.Close) : 1,
                         Price = currentCandle.Close + buySellRiseValue,
+                        //Price = currentCandle.Close,
                         Product = Constants.PRODUCT_MIS,
                         OrderType = Constants.ORDER_TYPE_LIMIT,
                         Validity = Constants.VALIDITY_DAY,
                         Variety = Constants.VARIETY_BO,
                         TriggerPrice = (currentCandle.Close + (riskValue + buySellRiseValue)),
+                        //TriggerPrice = (currentCandle.Close + (riskValue)),
                         SquareOffValue = rewardValue,
                         StoplossValue = riskValue,
-                        TrailingStoploss = (riskValue * 0.75m) < 1 ? 1 : (riskValue * 0.75m)
-                    });
-                //Log Candle
-                ApplicationLogger.LogJob(_jobId,
-                    GlobalConfigurations.IndianTime + " Selling Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
-                    GlobalConfigurations.IndianTime + " Selling Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
-                return -(_MinQuantity);
+                        TrailingStoploss = (riskValue) < 1 ? 1 : (riskValue)
+                    };
+                    if (isPlaceOrder)
+                        _zeropdhaService.PlaceOrder(brokerOrderModel);
+                    //Log Candle
+                    ApplicationLogger.LogJob(_jobId,
+                        GlobalConfigurations.IndianTime + " Selling Current Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 1)) + Environment.NewLine +
+                        GlobalConfigurations.IndianTime + " Selling Previous Candles [" + symbol.TradingSymbol + "]" + JsonConvert.SerializeObject(candles.ElementAt(candles.Count() - 2)));
+                }
             }
-            return 0;
+            catch (Exception ex) { }
+            return brokerOrderModel;
         }
 
         public bool IsOrderExpired(Position position, IEnumerable<Order> orders)
@@ -216,7 +226,7 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
             return false;
         }
 
-        private async Task<bool> CacheHistoryData(DateTime indianTime)
+        private async Task<bool> CacheHistoryData(DateTime indianTime, bool isDevelopment)
         {
             //Delete Previous data
             //Directory.Delete(GlobalConfigurations.CachedDataPath , recursive: true);
@@ -231,8 +241,10 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                 _zeropdhaService = new ZerodhaBroker(AutoMapper.Mapper.Map<UserSessionModel>(userSession));
                 await symbols.ParallelForEachAsync(async symbol =>
                 {
-                    var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe, indianTime.AddDays(_HistoricalDataInDays),
-                            indianTime);
+                    var candles = await _zeropdhaService.GetCachedDataAsync(symbol, _HistoricalDataTimeframe,
+                        indianTime.AddDays(_HistoricalDataInDays),
+                        indianTime,
+                        isDevelopment: isDevelopment);
                     if (candles != null && candles.Count() > 0)
                         ApplicationLogger.LogJob(_jobId, "Trading Data Cached :" + symbol.TradingSymbol);
                     else

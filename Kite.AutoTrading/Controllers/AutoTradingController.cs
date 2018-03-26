@@ -28,14 +28,7 @@ namespace Kite.AutoTrading.Controllers
 
         [HttpGet]
         public ActionResult Start()
-        {
-            //var userSession = (UserSessionModel)Session["userSession"];
-            //ZerodhaBroker zerodhaBroker = new ZerodhaBroker(userSession);
-            //MyFisrtStrategy.Start();
-            //RecurringJob.AddOrUpdate(() => MyFisrtStrategy.Start() , Cron.Minutely);
-
-
-            //RecurringJob.AddOrUpdate<MyFirstStrategy>(job.HangfireId,x=>x.Start(job.Id) , Cron.Minutely);
+        {            
             return View();
         }
 
@@ -48,17 +41,13 @@ namespace Kite.AutoTrading.Controllers
             {
                 MaxLoss = 10,
                 MaxProfit = 10,
-                WatchlistId = 2
+                WatchlistId = 1
             });
 
-            Stopwatch sw = new Stopwatch();
-            MAStrategy my = new MAStrategy();
-            sw.Start();
-            await my.Start(job.Id, true);
-            sw.Stop();
-            ApplicationLogger.LogJob(job.Id, "Job Completed at (Seconds)" + sw.Elapsed.TotalSeconds.ToString());
-
-            //RecurringJob.AddOrUpdate<MAStrategy>(job.HangfireId, x => x.Start(job.Id, false),Cron.MinuteInterval(2));
+            //MAStrategy my = new MAStrategy();
+            //await my.Start(job.Id, true);
+            
+            RecurringJob.AddOrUpdate<MAStrategy>(job.HangfireId, x => x.Start(job.Id, false),Cron.MinuteInterval(5));
             return View();
         }
     }

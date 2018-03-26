@@ -32,7 +32,7 @@ namespace Kite.AutoTrading.Business.Brokers
             _brokerOrderService = new BrokerOrderService();
         }
 
-        public IEnumerable<Candle> GetData(Symbol symbol, string period, DateTime fromDate, DateTime toDate, bool isContinous = false)
+        public IEnumerable<Candle> GetData(Symbol symbol, string period, DateTime fromDate, DateTime toDate, bool isContinous = false, bool isDevelopment = false)
         {
             int isRetryCount = 5;
             while (isRetryCount > 0)
@@ -60,11 +60,11 @@ namespace Kite.AutoTrading.Business.Brokers
                 {
                     isRetryCount -= 1;
                     Thread.Sleep(100);
-
-                    ApplicationLogger.LogException("Exception Occured in GetData() for Sybmol : " + JsonConvert.SerializeObject(symbol) + Environment.NewLine +
-                    "FromDate : " + fromDate.ToString() + Environment.NewLine +
-                    "ToDate : " + toDate.ToString() + Environment.NewLine +
-                    "Exception : " + JsonConvert.SerializeObject(ex));                    
+                    //if(!isDevelopment)
+                    //    ApplicationLogger.LogException("Exception Occured in GetData() for Sybmol : " + JsonConvert.SerializeObject(symbol) + Environment.NewLine +
+                    //    "FromDate : " + fromDate.ToString() + Environment.NewLine +
+                    //    "ToDate : " + toDate.ToString() + Environment.NewLine +
+                    //    "Exception : " + JsonConvert.SerializeObject(ex));                    
                 }
             }
             return null;
