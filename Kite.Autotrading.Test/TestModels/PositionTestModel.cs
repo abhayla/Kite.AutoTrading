@@ -4,6 +4,8 @@ namespace Kite.Autotrading.Test
 {
     public class PositionTestModel
     {
+        public string EMA { get; set; }
+        public string Period { get; set; }
         public string TradingSymbol { get; set; }
         public int NoOfPositions { get; set; }
         public int NoOfProfitable { get; set; }

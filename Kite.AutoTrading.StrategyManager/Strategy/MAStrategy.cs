@@ -30,17 +30,18 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
         //public readonly int _MinQuantity = 1;
         public readonly int _MinInvestmentPerOrder = 10000;
         public readonly int _MaxActivePositions = 15;
-        public readonly int _HistoricalDataInDays = -5;
-        public readonly string _HistoricalDataTimeframe = Constants.INTERVAL_15MINUTE;
+        public readonly int _HistoricalDataInDays = -10;
+        public readonly string _HistoricalDataTimeframe = Constants.INTERVAL_10MINUTE;
         public readonly decimal _RiskPercentage = 0.003m;
-        public readonly decimal _RewardPercentage = 0.0065m;
+        public readonly decimal _RewardPercentage = 0.006m;
         public readonly decimal _BuySellOnRisePercentage = 0.002m;
         public readonly int _OrderExpireTimeMinutes = 10;
-        public readonly int _EmaShortPeriod = 3;
-        public readonly int _EmaLongPeriod = 5;
+
+        public int _EmaShortPeriod = 3;
+        public int _EmaLongPeriod = 5;
 
         public readonly TimeSpan preMarketStart = new TimeSpan(8, 00, 0);
-        public readonly TimeSpan preMarketEnd = new TimeSpan(9, 10, 0);
+        public readonly TimeSpan preMarketEnd = new TimeSpan(9, 20, 0);
 
         public readonly TimeSpan marketStart = new TimeSpan(9, 30, 0);
         public readonly TimeSpan marketEnd = new TimeSpan(15, 05, 0);
@@ -151,14 +152,14 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                         TradingSymbol = symbol.TradingSymbol,
                         TransactionType = Constants.TRANSACTION_TYPE_BUY,
                         Quantity = Convert.ToInt32(_MinInvestmentPerOrder / currentCandle.Close) > 0 ? Convert.ToInt32(_MinInvestmentPerOrder / currentCandle.Close) : 1,
-                        Price = currentCandle.Close - buySellRiseValue,
-                        //Price = currentCandle.Close,
+                        //Price = currentCandle.Close - buySellRiseValue,
+                        Price = currentCandle.Close,
                         Product = Constants.PRODUCT_MIS,
                         OrderType = Constants.ORDER_TYPE_LIMIT,
                         Validity = Constants.VALIDITY_DAY,
                         Variety = Constants.VARIETY_BO,
-                        TriggerPrice = (currentCandle.Close - (riskValue + buySellRiseValue)),
-                        //TriggerPrice = currentCandle.Close - (riskValue),
+                        //TriggerPrice = (currentCandle.Close - (riskValue + buySellRiseValue)),
+                        TriggerPrice = currentCandle.Close - (riskValue),
                         SquareOffValue = rewardValue,
                         StoplossValue = riskValue,
                         TrailingStoploss = (riskValue) < 1 ? 1 : (riskValue)
@@ -185,14 +186,14 @@ namespace Kite.AutoTrading.StrategyManager.Strategy
                         TradingSymbol = symbol.TradingSymbol,
                         TransactionType = Constants.TRANSACTION_TYPE_SELL,
                         Quantity = Convert.ToInt32(_MinInvestmentPerOrder / currentCandle.Close) > 0 ? Convert.ToInt32(_MinInvestmentPerOrder / currentCandle.Close) : 1,
-                        Price = currentCandle.Close + buySellRiseValue,
-                        //Price = currentCandle.Close,
+                        //Price = currentCandle.Close + buySellRiseValue,
+                        Price = currentCandle.Close,
                         Product = Constants.PRODUCT_MIS,
                         OrderType = Constants.ORDER_TYPE_LIMIT,
                         Validity = Constants.VALIDITY_DAY,
                         Variety = Constants.VARIETY_BO,
-                        TriggerPrice = (currentCandle.Close + (riskValue + buySellRiseValue)),
-                        //TriggerPrice = (currentCandle.Close + (riskValue)),
+                        //TriggerPrice = (currentCandle.Close + (riskValue + buySellRiseValue)),
+                        TriggerPrice = (currentCandle.Close + (riskValue)),
                         SquareOffValue = rewardValue,
                         StoplossValue = riskValue,
                         TrailingStoploss = (riskValue) < 1 ? 1 : (riskValue)

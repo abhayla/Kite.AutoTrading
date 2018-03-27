@@ -215,6 +215,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Helpers\CSVHelper.cs" />
     <Compile Include="Tests\MAStrategyTest.cs" />
     <Compile Include="TestModels\PositionTestModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
